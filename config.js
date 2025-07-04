@@ -1,4 +1,4 @@
-// Oona's Dash v1.19
+// Oona's Dash v1.20
 
 // --- PERUSMUUTTUJAT ---
 const canvas = document.getElementById('gameCanvas');
