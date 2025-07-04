@@ -1,4 +1,4 @@
-// Oona's Dash v1.22
+// Oona's Dash v1.23
 
 // --- PERUSMUUTTUJAT ---
 const canvas = document.getElementById('gameCanvas');
@@ -23,10 +23,9 @@ let colorTransitionProgress = 0;
 
 // --- PELIN TILA ---
 let gameState = 'menu';
-let showingInstructions = false; // UUSI: Ohjeikkunan tilan seuranta
+let showingInstructions = false;
 let animationFrameCounter = 0;
 let currentLevel = 1;
-// MUUTETTU: Tasapainotettu pisterajoja
 const levelThresholds = [200, 600, 1200, 2000];
 let levelUp = { active: false, timer: 0 };
 
@@ -47,6 +46,5 @@ let menuStars = [];
 
 // --- NAPIT ---
 const startButton = { x: 300, y: 250, width: 200, height: 50 };
-// UUSI: Info-napin ja muiden koordinaatit
-const infoButton = { x: canvas.width - 40, y: 40, radius: 15 };
+const infoButton = { x: 760, y: 40, radius: 15 };
 const nextLevelButton = { x: 300, y: 250, width: 200, height: 50 };
