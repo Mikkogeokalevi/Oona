@@ -1,4 +1,4 @@
-// Oona's Dash v1.23
+// Oona's Dash v1.25
 
 // --- PERUSMUUTTUJAT ---
 const canvas = document.getElementById('gameCanvas');
@@ -26,7 +26,8 @@ let gameState = 'menu';
 let showingInstructions = false;
 let animationFrameCounter = 0;
 let currentLevel = 1;
-const levelThresholds = [200, 600, 1200, 2000];
+// MUUTETTU: Ensimmäisen tason pisteraja on nyt 100.
+const levelThresholds = [100, 600, 1200, 2000];
 let levelUp = { active: false, timer: 0 };
 
 // --- PELIN ASETUKSET ---
