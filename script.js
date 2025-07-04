@@ -15,6 +15,16 @@ musicTracks.forEach(track => { track.loop = true; track.volume = 0.3; });
 // --- Pelin tilan ja muuttujien alustus ---
 let gameState = 'menu';
 
+// UUSI: Otsikon animaation muuttujat
+let titleAnimation = {
+    fullText: "Oona's Dash",
+    displayedText: "",
+    currentIndex: 0,
+    timer: 0,
+    speed: 5, // Pienempi arvo = nopeampi animaatio
+    isComplete: false
+};
+
 const player = {
     x: 150, y: 300, width: 40, height: 40,
     velocityY: 0, rotation: 0, isGrounded: false,
@@ -99,10 +109,7 @@ function addHighScore(newScore, newName) { if (!newName || newScore === 0) retur
 // --- Pelilogiikan päivitysfunktiot ---
 function updateGame() {
     player.isGrounded = false;
-
-    if (player.isJumpHeld && player.velocityY < 0) {
-        player.velocityY += jumpHoldStrength;
-    }
+    if (player.isJumpHeld && player.velocityY < 0) { player.velocityY += jumpHoldStrength; }
     player.velocityY += gravity;
     player.y += player.velocityY;
     player.rotation += 0.05 * (gameSpeed / 5);
@@ -111,31 +118,19 @@ function updateGame() {
 
     if (obstacles.length === 0 || obstacles[obstacles.length - 1].x < canvas.width - 300) {
         const rand = Math.random();
-        if (rand < 0.60) {
-            obstacles.push({ type: 'spike', x: canvas.width, width: 60, height: 60, color: '#af47d2' });
-        } else if (rand < 0.85) {
-            obstacles.push({ type: 'platform', x: canvas.width, y: canvas.height - (Math.random() * 150 + 80), width: Math.random() * 100 + 80, height: 20, color: '#ff66c4' });
-        } else {
-            const wallHeight = Math.random() * 60 + 50;
-            obstacles.push({ type: 'wall', x: canvas.width, y: canvas.height - wallHeight, width: 30, height: wallHeight, color: '#ff66c4' });
-        }
+        if (rand < 0.60) { obstacles.push({ type: 'spike', x: canvas.width, width: 60, height: 60, color: '#af47d2' }); }
+        else if (rand < 0.85) { obstacles.push({ type: 'platform', x: canvas.width, y: canvas.height - (Math.random() * 150 + 80), width: Math.random() * 100 + 80, height: 20, color: '#ff66c4' });}
+        else { const wallHeight = Math.random() * 60 + 50; obstacles.push({ type: 'wall', x: canvas.width, y: canvas.height - wallHeight, width: 30, height: wallHeight, color: '#ff66c4' }); }
         const lastObstacle = obstacles[obstacles.length-1];
-        if (Math.random() < 0.4) {
-             collectibles.push({x: lastObstacle.x + lastObstacle.width / 2, y: lastObstacle.y - 40, size: 15, rotation: 0, color: '#fffb00'});
-        }
+        if (Math.random() < 0.4) { collectibles.push({x: lastObstacle.x + lastObstacle.width / 2, y: lastObstacle.y - 40, size: 15, rotation: 0, color: '#fffb00'}); }
     }
 
     for (const obs of obstacles) {
         obs.x -= gameSpeed;
         if (obs.type === 'platform' || obs.type === 'wall') {
-            const onTop = player.velocityY >= 0 && (player.x + player.width) > obs.x && player.x < (obs.x + obs.width) &&
-                          (player.y + player.height) > obs.y && (player.y + player.height) < obs.y + 25;
-            if (onTop) {
-                player.y = obs.y - player.height; player.velocityY = 0; player.isGrounded = true; player.rotation = 0;
-            }
-            if (obs.type === 'wall' && !onTop && player.x + player.width > obs.x && player.x < obs.x + obs.width && player.y + player.height > obs.y) {
-                if (currentMusic) { currentMusic.pause(); } crashSound.play(); gameState = 'gameOver';
-            }
+            const onTop = player.velocityY >= 0 && (player.x + player.width) > obs.x && player.x < (obs.x + obs.width) && (player.y + player.height) > obs.y && (player.y + player.height) < obs.y + 25;
+            if (onTop) { player.y = obs.y - player.height; player.velocityY = 0; player.isGrounded = true; player.rotation = 0; }
+            if (obs.type === 'wall' && !onTop && player.x + player.width > obs.x && player.x < obs.x + obs.width && player.y + player.height > obs.y) { if (currentMusic) { currentMusic.pause(); } crashSound.play(); gameState = 'gameOver'; }
         }
     }
     obstacles = obstacles.filter(obs => obs.x + obs.width > 0);
@@ -144,8 +139,7 @@ function updateGame() {
         const star = collectibles[i];
         star.x -= gameSpeed;
         star.rotation += 0.1;
-        const dx = (player.x + player.width/2) - star.x;
-        const dy = (player.y + player.height/2) - star.y;
+        const dx = (player.x + player.width/2) - star.x; const dy = (player.y + player.height/2) - star.y;
         if (Math.sqrt(dx*dx + dy*dy) < player.width/2 + star.size) {
             score += 50;
             const randomCollectSound = collectSounds[Math.floor(Math.random() * collectSounds.length)];
@@ -158,6 +152,21 @@ function updateGame() {
     particles.push({ x: player.x + 5, y: player.y + player.height / 2, size: Math.random() * 4 + 2, color: 'rgba(247, 255, 89, 0.5)', life: 1 });
     particles = particles.filter(p => { p.x -= gameSpeed * 0.8; p.life -= 0.05; p.size -= 0.1; return p.life > 0 && p.size > 0; });
     score += 0.1; gameSpeed += 0.0005;
+}
+
+// UUSI: Funktio otsikon animaation päivittämiseen
+function updateTitleAnimation() {
+    if (titleAnimation.isComplete) return;
+
+    titleAnimation.timer++;
+    if (titleAnimation.timer >= titleAnimation.speed) {
+        titleAnimation.timer = 0;
+        titleAnimation.displayedText += titleAnimation.fullText[titleAnimation.currentIndex];
+        titleAnimation.currentIndex++;
+        if (titleAnimation.currentIndex >= titleAnimation.fullText.length) {
+            titleAnimation.isComplete = true;
+        }
+    }
 }
 
 // --- Piirtofunktiot ---
@@ -178,14 +187,19 @@ function drawMenu() {
     ctx.textAlign = 'center';
     
     ['#f7ff59', '#ff66c4', '#af47d2'].forEach((color, i) => {
-        ctx.font = `${60 + i*20}px Arial`;
-        ctx.fillStyle = color;
+        ctx.font = `${60 + i*20}px Arial`; ctx.fillStyle = color;
         ctx.fillText('★', 100 + i*150, 150 + i*50);
     });
 
+    // MUUTETTU: Piirretään animoituva otsikko
     ctx.fillStyle = '#ffffff';
     ctx.font = '70px "Impact", sans-serif';
-    ctx.fillText("Oona's Dash", canvas.width / 2, 150);
+    let titleTextToDraw = titleAnimation.displayedText;
+    // Lisätään vilkkuva kursori, jos animaatio on kesken
+    if (!titleAnimation.isComplete && Math.floor(Date.now() / 400) % 2 === 0) {
+        titleTextToDraw += '_';
+    }
+    ctx.fillText(titleTextToDraw, canvas.width / 2, 150);
 
     ctx.fillStyle = '#33ff57';
     ctx.fillRect(startButton.x, startButton.y, startButton.width, startButton.height);
@@ -195,8 +209,7 @@ function drawMenu() {
     ctx.fillStyle = '#ffffff'; ctx.font = '24px Arial';
     ctx.fillText('Top 10:', canvas.width / 2, 350);
     if (highScores.length === 0) {
-        ctx.font = '18px Arial';
-        ctx.fillText('Ei vielä tuloksia!', canvas.width / 2, 390);
+        ctx.font = '18px Arial'; ctx.fillText('Ei vielä tuloksia!', canvas.width / 2, 390);
     } else {
         highScores.forEach((entry, index) => {
             ctx.font = '20px Arial';
@@ -216,11 +229,14 @@ function drawGameOver() {
 }
 
 // --- Pelin alustus ja pääsilmukka ---
-function resetGame() {
-    player.y = canvas.height / 2;
-    player.velocityY = 0; player.rotation = 0;
-    obstacles = []; particles = []; collectibles = [];
-    score = 0; gameSpeed = 5;
+function resetGame() { player.y = canvas.height / 2; player.velocityY = 0; player.rotation = 0; obstacles = []; particles = []; collectibles = []; score = 0; gameSpeed = 5; }
+
+// UUSI: Funktio otsikon animaation nollaamiseen
+function resetTitleAnimation() {
+    titleAnimation.displayedText = "";
+    titleAnimation.currentIndex = 0;
+    titleAnimation.timer = 0;
+    titleAnimation.isComplete = false;
 }
 
 function gameLoop() {
@@ -228,6 +244,7 @@ function gameLoop() {
         updateGame();
         drawGame();
     } else if (gameState === 'menu') {
+        updateTitleAnimation(); // UUSI: Päivitetään animaatiota
         drawMenu();
     } else if (gameState === 'gameOver') {
         drawGameOver();
@@ -238,11 +255,7 @@ function gameLoop() {
 function unlockAllAudio() {
     if (audioInitialized) return;
     const allAudio = [...musicTracks, ...jumpSounds, ...collectSounds, crashSound];
-    allAudio.forEach(sound => {
-        sound.play();
-        sound.pause();
-        sound.currentTime = 0;
-    });
+    allAudio.forEach(sound => { sound.play(); sound.pause(); sound.currentTime = 0; });
     audioInitialized = true;
 }
 
@@ -265,15 +278,12 @@ function handleInputPress(x, y) {
         const finalScore = Math.floor(score);
         const name = prompt(`Peli ohi! Sait ${finalScore} pistettä. Syötä nimesi:`, "Pelaaja");
         addHighScore(finalScore, name);
+        resetTitleAnimation(); // UUSI: Nollataan animaatio palatessa valikkoon
         gameState = 'menu';
     }
 }
 
-function handleInputRelease() {
-    if (gameState === 'playing') {
-        player.isJumpHeld = false;
-    }
-}
+function handleInputRelease() { if (gameState === 'playing') { player.isJumpHeld = false; } }
 
 window.addEventListener('mousedown', e => { const r = canvas.getBoundingClientRect(); handleInputPress((e.clientX - r.left) * (canvas.width/r.width), (e.clientY - r.top) * (canvas.height/r.height)); });
 window.addEventListener('mouseup', handleInputRelease);
