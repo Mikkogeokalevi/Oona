@@ -2,6 +2,29 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// --- ÄÄNTEN LATAUS ---
+// MUUTETTU: Ladataan kaikki taustamusiikit ja hyppyäänet taulukoihin
+const musicTracks = [
+    new Audio('music1.mp3'),
+    new Audio('music2.mp3'),
+    new Audio('music3.mp3'),
+    new Audio('music4.mp3')
+];
+let currentMusic; // Pitää kirjaa soivasta kappaleesta
+
+const jumpSounds = [
+    new Audio('jump1.mp3'),
+    new Audio('jump2.mp3')
+];
+const crashSound = new Audio('crash.mp3');
+
+// Asetetaan kaikille musiikkikappaleille yhteiset ominaisuudet
+musicTracks.forEach(track => {
+    track.loop = true;
+    track.volume = 0.3;
+});
+
+
 // --- Pelin tilan ja muuttujien alustus ---
 let gameState = 'menu'; // 'menu', 'playing', 'gameOver'
 
@@ -12,12 +35,12 @@ const player = {
     height: 40,
     velocityY: 0,
     rotation: 0,
-    isGrounded: false, // UUSI: Kertoo, onko pelaaja maan tai tason päällä
-    color: '#f7ff59' // MUUTETTU: Kirkas keltainen
+    isGrounded: false,
+    color: '#f7ff59'
 };
 
-const gravity = 0.8; // Nostettu hieman tasojen takia
-const jumpStrength = -19; // Nostettu hieman tasojen takia
+const gravity = 0.8;
+const jumpStrength = -19;
 let gameSpeed = 5;
 let score = 0;
 let obstacles = [];
@@ -59,13 +82,15 @@ function drawPlayer() {
 }
 
 function jump() {
-    // Sallitaan hyppy vain, kun pelaaja on maassa tai tason päällä
     if (player.isGrounded) {
         player.velocityY = jumpStrength;
+        // MUUTETTU: Valitaan satunnainen hyppyääni ja soitetaan se
+        const randomSound = jumpSounds[Math.floor(Math.random() * jumpSounds.length)];
+        randomSound.currentTime = 0;
+        randomSound.play();
     }
 }
 
-// Piirretään este tyyppinsä mukaan
 function drawObstacle(obs) {
     ctx.fillStyle = obs.color;
     if (obs.type === 'spike') {
@@ -92,10 +117,10 @@ function saveHighScores() {
 }
 
 function addHighScore(newScore, newName) {
-    if (!newName || newScore === 0) return; // Älä tallenna tyhjää nimeä tai nollatulosta
+    if (!newName || newScore === 0) return;
     highScores.push({ name: newName, score: newScore });
     highScores.sort((a, b) => b.score - a.score);
-    highScores = highScores.slice(0, 10); // MUUTETTU: Pidetään Top 10
+    highScores = highScores.slice(0, 10);
     saveHighScores();
 }
 
@@ -103,13 +128,10 @@ function addHighScore(newScore, newName) {
 
 function updateGame() {
     player.isGrounded = false;
-
-    // Pelaajan fysiikka
     player.velocityY += gravity;
     player.y += player.velocityY;
     player.rotation += 0.05 * (gameSpeed / 5);
 
-    // Tarkista, onko pelaaja maan päällä
     if (player.y > canvas.height - player.height) {
         player.y = canvas.height - player.height;
         player.velocityY = 0;
@@ -117,28 +139,23 @@ function updateGame() {
         player.rotation = 0;
     }
 
-    // Esteiden ja tasojen luominen
     if (obstacles.length === 0 || obstacles[obstacles.length - 1].x < canvas.width - 350) {
-        if (Math.random() > 0.65) { // 35% mahdollisuus tasolle
+        if (Math.random() > 0.65) {
             const platformHeight = 20;
             const platformWidth = Math.random() * 100 + 80;
             const platformY = canvas.height - (Math.random() * 150 + 80);
             obstacles.push({ type: 'platform', x: canvas.width, y: platformY, width: platformWidth, height: platformHeight, color: '#ff66c4' });
-        } else { // 65% mahdollisuus piikille
+        } else {
             const spikeHeight = Math.random() * 80 + 40;
             const spikeWidth = spikeHeight * 0.7;
             obstacles.push({ type: 'spike', x: canvas.width, width: spikeWidth, height: spikeHeight, color: '#af47d2' });
         }
     }
-
-    // Esteiden ja tasojen käsittely
+    
     for (const obs of obstacles) {
         obs.x -= gameSpeed;
-
         if (obs.type === 'platform') {
-            // Tason päällä seisomisen logiikka
-            if (player.velocityY >= 0 && // Vain putoamassa
-                player.x + player.width > obs.x && player.x < obs.x + obs.width &&
+            if (player.velocityY >= 0 && player.x + player.width > obs.x && player.x < obs.x + obs.width &&
                 player.y + player.height > obs.y && player.y + player.height < obs.y + obs.height + 15) {
                 player.y = obs.y - player.height;
                 player.velocityY = 0;
@@ -146,19 +163,18 @@ function updateGame() {
                 player.rotation = 0;
             }
         } else if (obs.type === 'spike') {
-            // KORJATTU TÖRMÄYKSEN TUNNISTUS
-            const spikeTipX = obs.x + obs.width / 2;
-            const spikeTipY = canvas.height - obs.height;
-
-            // Käytetään pienempää, tarkempaa hitboxia pelaajalle
             const playerHitbox = { x: player.x + 10, y: player.y + 10, width: player.width - 20, height: player.height - 20 };
-
             if (playerHitbox.x < obs.x + obs.width && playerHitbox.x + playerHitbox.width > obs.x) {
-                if (playerHitbox.y + playerHitbox.height > spikeTipY) {
-                    // Yksinkertainen etäisyystarkistus piikin kärkeen
+                if (playerHitbox.y + playerHitbox.height > canvas.height - obs.height) {
+                    const spikeTipX = obs.x + obs.width / 2;
                     const dx = (playerHitbox.x + playerHitbox.width / 2) - spikeTipX;
-                    const dy = (playerHitbox.y + playerHitbox.height / 2) - spikeTipY;
+                    const dy = (playerHitbox.y + playerHitbox.height / 2) - (canvas.height - obs.height);
                     if (Math.sqrt(dx * dx + dy * dy) < 30) {
+                         // MUUTETTU: Pysäytetään nykyinen musiikkikappale
+                         if (currentMusic) {
+                            currentMusic.pause();
+                         }
+                         crashSound.play();
                          gameState = 'gameOver';
                     }
                 }
@@ -167,7 +183,6 @@ function updateGame() {
     }
     obstacles = obstacles.filter(obs => obs.x + obs.width > 0);
 
-    // Partikkelit
     particles.push({ x: player.x + 5, y: player.y + player.height / 2, size: Math.random() * 4 + 2, color: 'rgba(247, 255, 89, 0.5)', life: 1 });
     particles = particles.filter(p => {
         p.x -= gameSpeed * 0.8; p.life -= 0.05; p.size -= 0.1;
@@ -195,28 +210,19 @@ function drawGame() {
 
 function drawMenu() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    
-    // Piirrä koriste-tähtiä
+    ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
     ['#f7ff59', '#ff66c4', '#af47d2'].forEach((color, i) => {
         ctx.font = `${60 + i*20}px Arial`;
         ctx.fillStyle = color;
         ctx.fillText('★', 100 + i*150, 150 + i*50);
     });
-
-    // Otsikko
     ctx.fillStyle = '#ffffff';
     ctx.font = '70px "Impact", sans-serif';
     ctx.fillText("Oona's Dash", canvas.width / 2, 150);
-
-    // Aloitusnappi
     ctx.fillStyle = '#33ff57';
     ctx.fillRect(startButton.x, startButton.y, startButton.width, startButton.height);
     ctx.fillStyle = '#000000'; ctx.font = '30px Arial';
     ctx.fillText('Aloita peli', canvas.width / 2, startButton.y + 35);
-
-    // Huipputulokset
     ctx.fillStyle = '#ffffff'; ctx.font = '24px Arial';
     ctx.fillText('Top 10:', canvas.width / 2, 350);
     if (highScores.length === 0) {
@@ -270,6 +276,16 @@ function handleInput(x, y) {
         if (x > startButton.x && x < startButton.x + startButton.width &&
             y > startButton.y && y < startButton.y + startButton.height) {
             resetGame();
+            
+            // MUUTETTU: Valitaan ja soitetaan satunnainen taustamusiikki
+            if (currentMusic) {
+                currentMusic.pause(); // Pysäytä mahdollinen edellinen musiikki
+            }
+            const musicIndex = Math.floor(Math.random() * musicTracks.length);
+            currentMusic = musicTracks[musicIndex];
+            currentMusic.currentTime = 0;
+            currentMusic.play();
+            
             gameState = 'playing';
         }
     } else if (gameState === 'gameOver') {
