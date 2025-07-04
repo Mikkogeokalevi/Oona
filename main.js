@@ -1,6 +1,30 @@
-// Oona's Dash v1.20 - Päälogiikka
+// Oona's Dash v1.21 - Päälogiikka
 
-// KORJATTU: Siirretty tänne, jotta se on käytettävissä pelilogiikassa
+// KORJATTU: Nämä kriittiset alustusfunktiot puuttuivat ja aiheuttivat virheen.
+function resizeCanvas() {
+    const aspectRatio = 16 / 9;
+    let newWidth = window.innerWidth;
+    let newHeight = window.innerHeight;
+    const windowAspectRatio = newWidth / newHeight;
+    if (windowAspectRatio > aspectRatio) { newWidth = newHeight * aspectRatio; } else { newHeight = newWidth / aspectRatio; }
+    canvas.width = 800; canvas.height = 450;
+    canvas.style.width = `${newWidth}px`; canvas.style.height = `${newHeight}px`;
+    startButton.x = canvas.width / 2 - startButton.width / 2; startButton.y = canvas.height / 2;
+}
+
+function initializeMenuStars() {
+    menuStars = [];
+    const starColors = ['#f7ff59', '#ff66c4', '#af47d2'];
+    for (let i = 0; i < 5; i++) {
+        menuStars.push({
+            type: 'star', x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+            size: Math.random() * 20 + 10, rotation: Math.random() * Math.PI * 2,
+            rotationSpeed: (Math.random() - 0.5) * 0.02, color: starColors[i % starColors.length]
+        });
+    }
+}
+
+
 function jump() {
     if (player.isGrounded) {
         player.velocityY = initialJumpStrength;
@@ -29,24 +53,20 @@ function saveHighScores() { localStorage.setItem('oonasDashHighScores', JSON.str
 function addHighScore(newScore, newName) { if (!newName || newScore === 0) return; highScores.push({ name: newName, score: newScore }); highScores.sort((a, b) => b.score - a.score); highScores = highScores.slice(0, 10); saveHighScores(); }
 
 function updateGame() {
-    // --- Tasonnousu ja värin vaihto ---
     if (currentLevel - 1 < levelThresholds.length && score >= levelThresholds[currentLevel - 1]) {
         currentLevel++;
         levelUp.active = true; levelUp.timer = 120;
         gameSpeed += 0.5;
-        // KORJATTU: Vaihdetaan suuntaa ja asetetaan pelaaja oikeaan reunaan
-        if (currentLevel % 2 === 0) {
-            player.x = canvas.width - player.width - 150;
-        } else {
-            player.x = 150;
-        }
+        const direction = currentLevel % 2 === 1 ? 1 : -1;
+        if (direction === -1) { player.x = canvas.width - player.width - 150; }
+        else { player.x = 150; }
     }
     if (levelUp.active) { levelUp.timer--; if (levelUp.timer <= 0) { levelUp.active = false; } }
+
     const transitionSpeed = 0.0005;
     colorTransitionProgress += transitionSpeed * gameSpeed;
     if (colorTransitionProgress >= 1) { colorTransitionProgress = 0; currentColorIndex = (currentColorIndex + 1) % colorSchemes.length; }
     
-    // --- Pelaajan fysiikka ---
     player.isGrounded = false;
     if (player.isJumpHeld && player.velocityY < 0) { player.velocityY += jumpHoldStrength; }
     player.velocityY += gravity;
@@ -57,9 +77,8 @@ function updateGame() {
     
     if (player.y > canvas.height - player.height) { player.y = canvas.height - player.height; player.velocityY = 0; player.isGrounded = true; player.doubleJumpUsed = false; player.rotation = 0; }
 
-    // --- Esteiden luominen ---
     const lastObstacle = obstacles[obstacles.length - 1];
-    const spawnMargin = 350; // Etäisyys reunasta, jotta esteet eivät synny liian äkkiä
+    const spawnMargin = 350;
     const spawnCondition = direction === 1 ? (!lastObstacle || lastObstacle.x < canvas.width - spawnMargin) : (!lastObstacle || lastObstacle.x > spawnMargin);
     if (spawnCondition) {
         let obstacleType = 'spike';
@@ -67,7 +86,7 @@ function updateGame() {
         if (currentLevel === 2) { if (rand > 0.6) obstacleType = 'wall'; }
         else if (currentLevel >= 3) { if (rand > 0.75) obstacleType = 'roof_spike'; else if (rand > 0.5) obstacleType = 'platform'; else if (rand > 0.25) obstacleType = 'wall';}
         
-        const x = direction === 1 ? canvas.width : -60; // Aloituspiste ruudun ulkopuolelta
+        const x = direction === 1 ? canvas.width : -60;
         let newObstacle;
         if (obstacleType === 'spike') { newObstacle = { type: 'spike', x: x, width: 60, height: 60, color: '#af47d2' }; }
         else if (obstacleType === 'platform') { newObstacle = { type: 'platform', x: x, y: canvas.height - (Math.random() * 150 + 80), width: Math.random() * 100 + 80, height: 20, color: '#ff66c4' }; }
@@ -75,13 +94,12 @@ function updateGame() {
         else if (obstacleType === 'roof_spike') { newObstacle = { type: 'roof_spike', x: x, width: 50, height: 50, color: '#c70039' }; }
         obstacles.push(newObstacle);
 
-        if (Math.random() < 0.4) {
+        if (Math.random() < 0.4 && newObstacle.type !== 'roof_spike') {
              const collectibleType = Math.random() < 0.7 ? 'star' : 'heart';
              collectibles.push({ type: collectibleType, x: newObstacle.x + newObstacle.width/2, y: newObstacle.y - 40, size: collectibleType === 'star' ? 15 : 20, points: collectibleType === 'star' ? 50 : 150, rotation: 0, color: collectibleType === 'star' ? '#fffb00' : '#ff1a75'});
         }
     }
 
-    // --- Törmäystarkistelut ja objektien päivitys ---
     for (const obs of obstacles) {
         obs.x -= gameSpeed * direction;
         if (obs.type === 'platform' || obs.type === 'wall') {
@@ -93,17 +111,38 @@ function updateGame() {
         }
     }
 
-    collectibles.forEach(item => item.x -= gameSpeed * direction);
-    // ... muu logiikka pysyy samana ...
+    for (let i = collectibles.length - 1; i >= 0; i--) {
+        const item = collectibles[i];
+        item.x -= gameSpeed * direction; item.rotation += 0.1;
+        const dx = (player.x + player.width/2) - item.x; const dy = (player.y + player.height/2) - item.y;
+        if (Math.sqrt(dx*dx + dy*dy) < player.width/2 + item.size) {
+            score += item.points;
+            const randomCollectSound = collectSounds[Math.floor(Math.random() * collectSounds.length)];
+            randomCollectSound.play();
+            collectibles.splice(i, 1);
+        }
+        if (direction === 1 && item.x < -20) collectibles.splice(i, 1);
+        if (direction === -1 && item.x > canvas.width + 20) collectibles.splice(i, 1);
+    }
+    
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        if (p.velX) p.x += p.velX; else p.x -= gameSpeed * 0.8;
+        if (p.velY) p.y += p.velY;
+        p.life -= 0.05;
+        p.size -= 0.1;
+        if (p.life <= 0 || p.size <= 0) { particles.splice(i, 1); }
+    }
+    
+    score += 0.1; gameSpeed += 0.0005;
 }
 
 function resetGame() {
     player.y = canvas.height / 2;
-    player.velocityY = 0;
-    player.rotation = 0;
+    player.velocityY = 0; player.rotation = 0;
     player.doubleJumpUsed = false;
     currentLevel = 1;
-    player.x = 150; // Aloituspaikka
+    player.x = 150;
     obstacles = []; particles = []; collectibles = [];
     score = 0; gameSpeed = 5;
     currentColorIndex = 0; colorTransitionProgress = 0;
