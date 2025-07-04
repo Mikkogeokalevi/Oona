@@ -14,16 +14,7 @@ musicTracks.forEach(track => { track.loop = true; track.volume = 0.3; });
 
 // --- Pelin tilan ja muuttujien alustus ---
 let gameState = 'menu';
-
-// UUSI: Otsikon animaation muuttujat
-let titleAnimation = {
-    fullText: "Oona's Dash",
-    displayedText: "",
-    currentIndex: 0,
-    timer: 0,
-    speed: 5, // Pienempi arvo = nopeampi animaatio
-    isComplete: false
-};
+let animationFrameCounter = 0; // UUSI: Laskuri jatkuville animaatioille
 
 const player = {
     x: 150, y: 300, width: 40, height: 40,
@@ -41,6 +32,7 @@ let obstacles = [];
 let particles = [];
 let collectibles = [];
 let highScores = [];
+let menuStars = []; // UUSI: Taulukko valikon tähdille
 
 const startButton = { x: 300, y: 250, width: 200, height: 50 };
 
@@ -54,6 +46,22 @@ function resizeCanvas() {
     canvas.width = 800; canvas.height = 450;
     canvas.style.width = `${newWidth}px`; canvas.style.height = `${newHeight}px`;
     startButton.x = canvas.width / 2 - startButton.width / 2; startButton.y = canvas.height / 2;
+}
+
+// UUSI: Alustetaan valikon tähdet kerran
+function initializeMenuStars() {
+    menuStars = []; // Tyhjennetään varmuuden vuoksi
+    const starColors = ['#f7ff59', '#ff66c4', '#af47d2'];
+    for (let i = 0; i < 5; i++) {
+        menuStars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() * 20 + 10,
+            rotation: Math.random() * Math.PI * 2,
+            rotationSpeed: (Math.random() - 0.5) * 0.02,
+            color: starColors[i % starColors.length]
+        });
+    }
 }
 
 function drawPlayer() {
@@ -113,18 +121,15 @@ function updateGame() {
     player.velocityY += gravity;
     player.y += player.velocityY;
     player.rotation += 0.05 * (gameSpeed / 5);
-
     if (player.y > canvas.height - player.height) { player.y = canvas.height - player.height; player.velocityY = 0; player.isGrounded = true; player.rotation = 0; }
-
     if (obstacles.length === 0 || obstacles[obstacles.length - 1].x < canvas.width - 300) {
         const rand = Math.random();
         if (rand < 0.60) { obstacles.push({ type: 'spike', x: canvas.width, width: 60, height: 60, color: '#af47d2' }); }
-        else if (rand < 0.85) { obstacles.push({ type: 'platform', x: canvas.width, y: canvas.height - (Math.random() * 150 + 80), width: Math.random() * 100 + 80, height: 20, color: '#ff66c4' });}
+        else if (rand < 0.85) { obstacles.push({ type: 'platform', x: canvas.width, y: canvas.height - (Math.random() * 150 + 80), width: Math.random() * 100 + 80, height: 20, color: '#ff66c4' }); }
         else { const wallHeight = Math.random() * 60 + 50; obstacles.push({ type: 'wall', x: canvas.width, y: canvas.height - wallHeight, width: 30, height: wallHeight, color: '#ff66c4' }); }
         const lastObstacle = obstacles[obstacles.length-1];
         if (Math.random() < 0.4) { collectibles.push({x: lastObstacle.x + lastObstacle.width / 2, y: lastObstacle.y - 40, size: 15, rotation: 0, color: '#fffb00'}); }
     }
-
     for (const obs of obstacles) {
         obs.x -= gameSpeed;
         if (obs.type === 'platform' || obs.type === 'wall') {
@@ -134,11 +139,9 @@ function updateGame() {
         }
     }
     obstacles = obstacles.filter(obs => obs.x + obs.width > 0);
-
     for (let i = collectibles.length - 1; i >= 0; i--) {
         const star = collectibles[i];
-        star.x -= gameSpeed;
-        star.rotation += 0.1;
+        star.x -= gameSpeed; star.rotation += 0.1;
         const dx = (player.x + player.width/2) - star.x; const dy = (player.y + player.height/2) - star.y;
         if (Math.sqrt(dx*dx + dy*dy) < player.width/2 + star.size) {
             score += 50;
@@ -148,25 +151,9 @@ function updateGame() {
         }
         if (star.x < -20) collectibles.splice(i, 1);
     }
-
     particles.push({ x: player.x + 5, y: player.y + player.height / 2, size: Math.random() * 4 + 2, color: 'rgba(247, 255, 89, 0.5)', life: 1 });
     particles = particles.filter(p => { p.x -= gameSpeed * 0.8; p.life -= 0.05; p.size -= 0.1; return p.life > 0 && p.size > 0; });
     score += 0.1; gameSpeed += 0.0005;
-}
-
-// UUSI: Funktio otsikon animaation päivittämiseen
-function updateTitleAnimation() {
-    if (titleAnimation.isComplete) return;
-
-    titleAnimation.timer++;
-    if (titleAnimation.timer >= titleAnimation.speed) {
-        titleAnimation.timer = 0;
-        titleAnimation.displayedText += titleAnimation.fullText[titleAnimation.currentIndex];
-        titleAnimation.currentIndex++;
-        if (titleAnimation.currentIndex >= titleAnimation.fullText.length) {
-            titleAnimation.isComplete = true;
-        }
-    }
 }
 
 // --- Piirtofunktiot ---
@@ -183,27 +170,41 @@ function drawGame() {
 
 function drawMenu() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // MUUTETTU: Piirretään pyörivät taustatähdet
+    menuStars.forEach(drawStar);
+
+    // MUUTETTU: Piirretään aaltoileva otsikko
+    const titleText = "Oona's Dash";
+    const titleFontSize = 70;
+    ctx.font = `${titleFontSize}px "Impact", sans-serif`;
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     
-    ['#f7ff59', '#ff66c4', '#af47d2'].forEach((color, i) => {
-        ctx.font = `${60 + i*20}px Arial`; ctx.fillStyle = color;
-        ctx.fillText('★', 100 + i*150, 150 + i*50);
-    });
-
-    // MUUTETTU: Piirretään animoituva otsikko
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '70px "Impact", sans-serif';
-    let titleTextToDraw = titleAnimation.displayedText;
-    // Lisätään vilkkuva kursori, jos animaatio on kesken
-    if (!titleAnimation.isComplete && Math.floor(Date.now() / 400) % 2 === 0) {
-        titleTextToDraw += '_';
+    const waveSpeed = 0.05;
+    const waveAmplitude = 8;
+    const letterSpacing = 0.8;
+    
+    // Lasketaan koko tekstin leveys, jotta voimme keskittää sen manuaalisesti
+    let totalWidth = 0;
+    for (let i = 0; i < titleText.length; i++) {
+        totalWidth += ctx.measureText(titleText[i]).width * letterSpacing;
     }
-    ctx.fillText(titleTextToDraw, canvas.width / 2, 150);
+    let currentX = (canvas.width / 2) - (totalWidth / 2);
 
+    for (let i = 0; i < titleText.length; i++) {
+        const char = titleText[i];
+        const yOffset = Math.sin(animationFrameCounter * waveSpeed + i * 0.5) * waveAmplitude;
+        const charWidth = ctx.measureText(char).width;
+        
+        ctx.fillText(char, currentX + charWidth/2, 150 + yOffset);
+        currentX += charWidth * letterSpacing;
+    }
+
+    // Piirretään loput valikon elementit
     ctx.fillStyle = '#33ff57';
     ctx.fillRect(startButton.x, startButton.y, startButton.width, startButton.height);
-    ctx.fillStyle = '#000000'; ctx.font = '30px Arial';
+    ctx.fillStyle = '#000000'; ctx.font = '30px Arial'; ctx.textAlign = 'center';
     ctx.fillText('Aloita peli', canvas.width / 2, startButton.y + 35);
 
     ctx.fillStyle = '#ffffff'; ctx.font = '24px Arial';
@@ -231,20 +232,15 @@ function drawGameOver() {
 // --- Pelin alustus ja pääsilmukka ---
 function resetGame() { player.y = canvas.height / 2; player.velocityY = 0; player.rotation = 0; obstacles = []; particles = []; collectibles = []; score = 0; gameSpeed = 5; }
 
-// UUSI: Funktio otsikon animaation nollaamiseen
-function resetTitleAnimation() {
-    titleAnimation.displayedText = "";
-    titleAnimation.currentIndex = 0;
-    titleAnimation.timer = 0;
-    titleAnimation.isComplete = false;
-}
-
 function gameLoop() {
+    animationFrameCounter++; // Päivitetään animaatiolaskuria joka kierroksella
+
     if (gameState === 'playing') {
         updateGame();
         drawGame();
     } else if (gameState === 'menu') {
-        updateTitleAnimation(); // UUSI: Päivitetään animaatiota
+        // MUUTETTU: Päivitetään valikon tähtien animaatiota
+        menuStars.forEach(star => { star.rotation += star.rotationSpeed; });
         drawMenu();
     } else if (gameState === 'gameOver') {
         drawGameOver();
@@ -278,7 +274,6 @@ function handleInputPress(x, y) {
         const finalScore = Math.floor(score);
         const name = prompt(`Peli ohi! Sait ${finalScore} pistettä. Syötä nimesi:`, "Pelaaja");
         addHighScore(finalScore, name);
-        resetTitleAnimation(); // UUSI: Nollataan animaatio palatessa valikkoon
         gameState = 'menu';
     }
 }
@@ -293,5 +288,6 @@ window.addEventListener('touchend', e => { e.preventDefault(); handleInputReleas
 // --- Pelin käynnistys ---
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
+initializeMenuStars(); // Alustetaan tähdet kerran
 highScores = getHighScores();
 gameLoop();
