@@ -1,4 +1,4 @@
-// Oona's Dash v1.11
+// Oona's Dash v1.12
 
 // Haetaan canvas-elementti HTML:stä
 const canvas = document.getElementById('gameCanvas');
@@ -14,20 +14,9 @@ let audioInitialized = false;
 
 musicTracks.forEach(track => { track.loop = true; track.volume = 0.3; });
 
-// UUSI: Määritellään väriteemat taustan vaihtumista varten
-const colorSchemes = [
-    { top: '#29024f', bottom: '#f469a9' }, // 1. Violetista pinkkiin
-    { top: '#00416a', bottom: '#799f0c' }, // 2. Tummansinisestä vihreään
-    { top: '#ff4e50', bottom: '#f9d423' }, // 3. Punaisesta keltaiseen
-    { top: '#141e30', bottom: '#243b55' }  // 4. Yönsinisestä tummaan
-];
-let currentColorIndex = 0;
-let colorTransitionProgress = 0;
-
 // --- Pelin tilan ja muuttujien alustus ---
 let gameState = 'menu';
 let animationFrameCounter = 0;
-
 const player = { x: 150, y: 300, width: 40, height: 40, velocityY: 0, rotation: 0, isGrounded: false, isJumpHeld: false, color: '#f7ff59' };
 const gravity = 0.9;
 const initialJumpStrength = -10;
@@ -42,51 +31,95 @@ let menuStars = [];
 const startButton = { x: 300, y: 250, width: 200, height: 50 };
 
 // --- Apu- ja piirtofunktiot ---
-
-// UUSI: Funktio, joka laskee kahden värin välisen sävyn
-function interpolateColor(color1, color2, factor) {
-    const r1 = parseInt(color1.substring(1, 3), 16);
-    const g1 = parseInt(color1.substring(3, 5), 16);
-    const b1 = parseInt(color1.substring(5, 7), 16);
-    const r2 = parseInt(color2.substring(1, 3), 16);
-    const g2 = parseInt(color2.substring(3, 5), 16);
-    const b2 = parseInt(color2.substring(5, 7), 16);
-
-    const r = Math.round(r1 + factor * (r2 - r1));
-    const g = Math.round(g1 + factor * (g2 - g1));
-    const b = Math.round(b1 + factor * (b2 - b1));
-
-    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+function resizeCanvas() {
+    const aspectRatio = 16 / 9;
+    let newWidth = window.innerWidth; let newHeight = window.innerHeight;
+    const windowAspectRatio = newWidth / newHeight;
+    if (windowAspectRatio > aspectRatio) { newWidth = newHeight * aspectRatio; } else { newHeight = newWidth / aspectRatio; }
+    canvas.width = 800; canvas.height = 450;
+    canvas.style.width = `${newWidth}px`; canvas.style.height = `${newHeight}px`;
+    startButton.x = canvas.width / 2 - startButton.width / 2; startButton.y = canvas.height / 2;
 }
 
-
-function resizeCanvas() { /* ...ei muutoksia... */ }
-function initializeMenuStars() { /* ...ei muutoksia... */ }
-function drawPlayer() { /* ...ei muutoksia... */ }
-function jump() { /* ...ei muutoksia... */ }
-function drawCollectible(item) { /* ...ei muutoksia... */ }
-function drawObstacle(obs) { /* ...ei muutoksia... */ }
-function getHighScores() { /* ...ei muutoksia... */ }
-function saveHighScores() { /* ...ei muutoksia... */ }
-function addHighScore(newScore, newName) { /* ...ei muutoksia... */ }
-
-// --- Pelilogiikan päivitysfunktiot ---
-function updateGame() {
-    // MUUTETTU: Päivitetään värin vaihdon edistymistä
-    const transitionSpeed = 0.0005; // Miten nopeasti väri vaihtuu
-    colorTransitionProgress += transitionSpeed * gameSpeed;
-    if (colorTransitionProgress >= 1) {
-        colorTransitionProgress = 0;
-        currentColorIndex = (currentColorIndex + 1) % colorSchemes.length;
+function initializeMenuStars() {
+    menuStars = [];
+    const starColors = ['#f7ff59', '#ff66c4', '#af47d2'];
+    for (let i = 0; i < 5; i++) {
+        menuStars.push({
+            type: 'star', x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+            size: Math.random() * 20 + 10, rotation: Math.random() * Math.PI * 2,
+            rotationSpeed: (Math.random() - 0.5) * 0.02, color: starColors[i % starColors.length]
+        });
     }
-    
+}
+
+function drawPlayer() {
+    ctx.save();
+    ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
+    ctx.rotate(player.rotation);
+    ctx.fillStyle = player.color;
+    ctx.fillRect(-player.width / 2, -player.height / 2, player.width, player.height);
+    ctx.restore();
+}
+
+function jump() {
+    if (player.isGrounded) {
+        player.velocityY = initialJumpStrength;
+        const randomSound = jumpSounds[Math.floor(Math.random() * jumpSounds.length)];
+        randomSound.currentTime = 0;
+        randomSound.play();
+    }
+}
+
+function drawCollectible(item) {
+    ctx.save();
+    ctx.translate(item.x, item.y);
+    ctx.rotate(item.rotation);
+    ctx.fillStyle = item.color;
+    if (item.type === 'star') {
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+            ctx.lineTo(Math.cos((18 + i * 72) * Math.PI / 180) * item.size, -Math.sin((18 + i * 72) * Math.PI / 180) * item.size);
+            ctx.lineTo(Math.cos((54 + i * 72) * Math.PI / 180) * item.size / 2, -Math.sin((54 + i * 72) * Math.PI / 180) * item.size / 2);
+        }
+        ctx.closePath();
+        ctx.fill();
+    } else if (item.type === 'heart') {
+        const s = item.size * 0.1;
+        ctx.beginPath();
+        ctx.moveTo(0, s * 2);
+        ctx.bezierCurveTo(-s * 4, -s * 2, -s * 2, -s * 5, 0, -s * 3);
+        ctx.bezierCurveTo(s * 2, -s * 5, s * 4, -s * 2, 0, s * 2);
+        ctx.closePath();
+        ctx.fill();
+    }
+    ctx.restore();
+}
+
+function drawObstacle(obs) {
+    ctx.fillStyle = obs.color;
+    if (obs.type === 'spike') {
+        ctx.beginPath();
+        ctx.moveTo(obs.x, canvas.height); ctx.lineTo(obs.x + obs.width / 2, canvas.height - obs.height);
+        ctx.lineTo(obs.x + obs.width, canvas.height);
+        ctx.closePath(); ctx.fill();
+    } else if (obs.type === 'platform' || obs.type === 'wall') {
+        ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+    }
+}
+
+function getHighScores() { const s = localStorage.getItem('oonasDashHighScores'); return s ? JSON.parse(s) : []; }
+function saveHighScores() { localStorage.setItem('oonasDashHighScores', JSON.stringify(highScores)); }
+function addHighScore(newScore, newName) { if (!newName || newScore === 0) return; highScores.push({ name: newName, score: newScore }); highScores.sort((a, b) => b.score - a.score); highScores = highScores.slice(0, 10); saveHighScores(); }
+
+function updateGame() {
+    // ... (Tämä funktio pysyy täysin ennallaan) ...
     player.isGrounded = false;
     if (player.isJumpHeld && player.velocityY < 0) { player.velocityY += jumpHoldStrength; }
     player.velocityY += gravity;
     player.y += player.velocityY;
     player.rotation += 0.05 * (gameSpeed / 5);
     if (player.y > canvas.height - player.height) { player.y = canvas.height - player.height; player.velocityY = 0; player.isGrounded = true; player.rotation = 0; }
-    
     if (obstacles.length === 0 || obstacles[obstacles.length - 1].x < canvas.width - 300) {
         const rand = Math.random();
         if (rand < 0.60) { obstacles.push({ type: 'spike', x: canvas.width, width: 60, height: 60, color: '#af47d2' }); }
@@ -98,31 +131,43 @@ function updateGame() {
             collectibles.push({ type: collectibleType, x: lastObstacle.x + lastObstacle.width / 2, y: lastObstacle.y - 40, size: collectibleType === 'star' ? 15 : 20, points: collectibleType === 'star' ? 50 : 150, rotation: 0, color: collectibleType === 'star' ? '#fffb00' : '#ff1a75'});
         }
     }
-    
-    // Loppuosa `updateGame`-funktiosta pysyy ennallaan...
-    for (const obs of obstacles) { /* ... */ }
+    for (const obs of obstacles) {
+        obs.x -= gameSpeed;
+        if (obs.type === 'platform' || obs.type === 'wall') {
+            const onTop = player.velocityY >= 0 && (player.x + player.width) > obs.x && player.x < (obs.x + obs.width) && (player.y + player.height) > obs.y && (player.y + player.height) < obs.y + 25;
+            if (onTop) { player.y = obs.y - player.height; player.velocityY = 0; player.isGrounded = true; player.rotation = 0; }
+            if (obs.type === 'wall' && !onTop && player.x + player.width > obs.x && player.x < obs.x + obs.width && player.y + player.height > obs.y) { if (currentMusic) { currentMusic.pause(); } crashSound.play(); gameState = 'gameOver'; }
+        }
+    }
     obstacles = obstacles.filter(obs => obs.x + obs.width > 0);
-    for (let i = collectibles.length - 1; i >= 0; i--) { /* ... */ }
+    for (let i = collectibles.length - 1; i >= 0; i--) {
+        const item = collectibles[i];
+        item.x -= gameSpeed; item.rotation += 0.1;
+        const dx = (player.x + player.width/2) - item.x; const dy = (player.y + player.height/2) - item.y;
+        if (Math.sqrt(dx*dx + dy*dy) < player.width/2 + item.size) {
+            score += item.points;
+            const randomCollectSound = collectSounds[Math.floor(Math.random() * collectSounds.length)];
+            randomCollectSound.play();
+            collectibles.splice(i, 1);
+        }
+        if (item.x < -20) collectibles.splice(i, 1);
+    }
     particles.push({ x: player.x + 5, y: player.y + player.height / 2, size: Math.random() * 4 + 2, color: 'rgba(247, 255, 89, 0.5)', life: 1 });
     particles = particles.filter(p => { p.x -= gameSpeed * 0.8; p.life -= 0.05; p.size -= 0.1; return p.life > 0 && p.size > 0; });
     score += 0.1;
     gameSpeed += 0.0005;
 }
 
-// --- Piirtofunktiot ---
-function drawGame() {
-    // MUUTETTU: Piirretään dynaaminen tausta. clearRect ei ole enää tarpeen.
+function drawGame() { /* ... (Tämä funktio pysyy täysin ennallaan) ... */
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     const nextColorIndex = (currentColorIndex + 1) % colorSchemes.length;
     const topColor = interpolateColor(colorSchemes[currentColorIndex].top, colorSchemes[nextColorIndex].top, colorTransitionProgress);
     const bottomColor = interpolateColor(colorSchemes[currentColorIndex].bottom, colorSchemes[nextColorIndex].bottom, colorTransitionProgress);
-
     const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
     gradient.addColorStop(0, topColor);
     gradient.addColorStop(1, bottomColor);
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Piirretään muut pelin elementit
     particles.forEach(p => { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); });
     ctx.globalAlpha = 1.0;
     collectibles.forEach(drawCollectible);
@@ -132,30 +177,27 @@ function drawGame() {
     ctx.fillText(`Pisteet: ${Math.floor(score)}`, 10, 30);
 }
 
-function drawMenu() { /* ...ei muutoksia... */ }
-function drawGameOver() { /* ...ei muutoksia... */ }
-
-// --- Pelin alustus ja pääsilmukka ---
-function resetGame() { 
-    player.y = canvas.height / 2; player.velocityY = 0; player.rotation = 0; obstacles = []; particles = []; collectibles = []; score = 0; gameSpeed = 5;
-    // Nollataan väri takaisin ensimmäiseen teemaan
-    currentColorIndex = 0;
-    colorTransitionProgress = 0;
-}
-
-function gameLoop() {
-    animationFrameCounter++;
-    if (gameState === 'playing') {
-        updateGame();
-        drawGame();
-    } else if (gameState === 'menu') {
-        menuStars.forEach(star => { star.rotation += star.rotationSpeed; });
-        drawMenu();
-    } else if (gameState === 'gameOver') {
-        drawGameOver();
+function drawMenu() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    menuStars.forEach(star => drawCollectible(star));
+    const titleText = "Oona's Dash";
+    ctx.font = `70px "Impact", sans-serif`;
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    const waveSpeed = 0.05;
+    const waveAmplitude = 8;
+    const letterSpacing = 0.8;
+    let totalWidth = 0;
+    for (let i = 0; i < titleText.length; i++) { totalWidth += ctx.measureText(titleText[i]).width * letterSpacing; }
+    let currentX = (canvas.width / 2) - (totalWidth / 2);
+    for (let i = 0; i < titleText.length; i++) {
+        const char = titleText[i];
+        const yOffset = Math.sin(animationFrameCounter * waveSpeed + i * 0.5) * waveAmplitude;
+        const charWidth = ctx.measureText(char).width;
+        ctx.fillText(char, currentX + charWidth/2, 150 + yOffset);
+        currentX += charWidth * letterSpacing;
     }
-    requestAnimationFrame(gameLoop);
-}
-
-// Muut funktiot (unlockAllAudio, handleInputPress, handleInputRelease, event listeners, käynnistys) pysyvät ennallaan.
-// ...
+    ctx.fillStyle = '#33ff57';
+    ctx.fillRect(startButton.x, startButton.y, startButton.width, startButton.height);
+    ctx.fillStyle = '#000000'; ctx.font = '30px Arial'; ctx.textAlign = 'center';
+    ctx.fillText('Aloita peli', canvas.width / 2, startButton.y + 35);
