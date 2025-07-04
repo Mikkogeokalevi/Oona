@@ -1,4 +1,4 @@
-// Oona's Dash v1.13
+// Oona's Dash v1.14
 
 // Haetaan canvas-elementti HTML:stä
 const canvas = document.getElementById('gameCanvas');
@@ -45,17 +45,87 @@ function interpolateColor(color1, color2, factor) {
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
-function resizeCanvas() { /* ...ei muutoksia... */ }
-function initializeMenuStars() { /* ...ei muutoksia... */ }
-function drawPlayer() { /* ...ei muutoksia... */ }
-function jump() { /* ...ei muutoksia... */ }
-function drawCollectible(item) { /* ...ei muutoksia... */ }
-function drawObstacle(obs) { /* ...ei muutoksia... */ }
-function getHighScores() { /* ...ei muutoksia... */ }
-function saveHighScores() { /* ...ei muutoksia... */ }
-function addHighScore(newScore, newName) { /* ...ei muutoksia... */ }
+function resizeCanvas() {
+    const aspectRatio = 16 / 9;
+    let newWidth = window.innerWidth; let newHeight = window.innerHeight;
+    const windowAspectRatio = newWidth / newHeight;
+    if (windowAspectRatio > aspectRatio) { newWidth = newHeight * aspectRatio; } else { newHeight = newWidth / aspectRatio; }
+    canvas.width = 800; canvas.height = 450;
+    canvas.style.width = `${newWidth}px`; canvas.style.height = `${newHeight}px`;
+    startButton.x = canvas.width / 2 - startButton.width / 2; startButton.y = canvas.height / 2;
+}
 
-// --- Pelilogiikan päivitysfunktiot ---
+function initializeMenuStars() {
+    menuStars = [];
+    const starColors = ['#f7ff59', '#ff66c4', '#af47d2'];
+    for (let i = 0; i < 5; i++) {
+        menuStars.push({
+            type: 'star', x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+            size: Math.random() * 20 + 10, rotation: Math.random() * Math.PI * 2,
+            rotationSpeed: (Math.random() - 0.5) * 0.02, color: starColors[i % starColors.length]
+        });
+    }
+}
+
+function drawPlayer() {
+    ctx.save();
+    ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
+    ctx.rotate(player.rotation);
+    ctx.fillStyle = player.color;
+    ctx.fillRect(-player.width / 2, -player.height / 2, player.width, player.height);
+    ctx.restore();
+}
+
+function jump() {
+    if (player.isGrounded) {
+        player.velocityY = initialJumpStrength;
+        const randomSound = jumpSounds[Math.floor(Math.random() * jumpSounds.length)];
+        randomSound.currentTime = 0;
+        randomSound.play();
+    }
+}
+
+function drawCollectible(item) {
+    ctx.save();
+    ctx.translate(item.x, item.y);
+    ctx.rotate(item.rotation);
+    ctx.fillStyle = item.color;
+    if (item.type === 'star') {
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+            ctx.lineTo(Math.cos((18 + i * 72) * Math.PI / 180) * item.size, -Math.sin((18 + i * 72) * Math.PI / 180) * item.size);
+            ctx.lineTo(Math.cos((54 + i * 72) * Math.PI / 180) * item.size / 2, -Math.sin((54 + i * 72) * Math.PI / 180) * item.size / 2);
+        }
+        ctx.closePath();
+        ctx.fill();
+    } else if (item.type === 'heart') {
+        const s = item.size * 0.1;
+        ctx.beginPath();
+        ctx.moveTo(0, s * 2);
+        ctx.bezierCurveTo(-s * 4, -s * 2, -s * 2, -s * 5, 0, -s * 3);
+        ctx.bezierCurveTo(s * 2, -s * 5, s * 4, -s * 2, 0, s * 2);
+        ctx.closePath();
+        ctx.fill();
+    }
+    ctx.restore();
+}
+
+function drawObstacle(obs) {
+    ctx.fillStyle = obs.color;
+    if (obs.type === 'spike') {
+        ctx.beginPath();
+        ctx.moveTo(obs.x, canvas.height); ctx.lineTo(obs.x + obs.width / 2, canvas.height - obs.height);
+        ctx.lineTo(obs.x + obs.width, canvas.height);
+        ctx.closePath(); ctx.fill();
+    } else if (obs.type === 'platform' || obs.type === 'wall') {
+        ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+    }
+}
+
+function getHighScores() { const s = localStorage.getItem('oonasDashHighScores'); return s ? JSON.parse(s) : []; }
+function saveHighScores() { localStorage.setItem('oonasDashHighScores', JSON.stringify(highScores)); }
+function addHighScore(newScore, newName) { if (!newName || newScore === 0) return; highScores.push({ name: newName, score: newScore }); highScores.sort((a, b) => b.score - a.score); highScores = highScores.slice(0, 10); saveHighScores(); }
+
 function updateGame() {
     const transitionSpeed = 0.0005;
     colorTransitionProgress += transitionSpeed * gameSpeed;
@@ -63,7 +133,6 @@ function updateGame() {
         colorTransitionProgress = 0;
         currentColorIndex = (currentColorIndex + 1) % colorSchemes.length;
     }
-    // ...loppuosa funktiosta pysyy ennallaan...
     player.isGrounded = false;
     if (player.isJumpHeld && player.velocityY < 0) { player.velocityY += jumpHoldStrength; }
     player.velocityY += gravity;
@@ -107,12 +176,10 @@ function updateGame() {
     score += 0.1; gameSpeed += 0.0005;
 }
 
-// UUSI: Apufunktio taustan piirtämiseen
 function drawDynamicBackground() {
     const nextColorIndex = (currentColorIndex + 1) % colorSchemes.length;
     const topColor = interpolateColor(colorSchemes[currentColorIndex].top, colorSchemes[nextColorIndex].top, colorTransitionProgress);
     const bottomColor = interpolateColor(colorSchemes[currentColorIndex].bottom, colorSchemes[nextColorIndex].bottom, colorTransitionProgress);
-
     const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
     gradient.addColorStop(0, topColor);
     gradient.addColorStop(1, bottomColor);
@@ -120,11 +187,8 @@ function drawDynamicBackground() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
-// --- Piirtofunktiot ---
 function drawGame() {
-    drawDynamicBackground(); // MUUTETTU
-
-    // Piirretään muut pelin elementit
+    drawDynamicBackground();
     particles.forEach(p => { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); });
     ctx.globalAlpha = 1.0;
     collectibles.forEach(drawCollectible);
@@ -135,9 +199,7 @@ function drawGame() {
 }
 
 function drawMenu() {
-    drawDynamicBackground(); // MUUTETTU: Lisätty taustan piirto
-    
-    // Piirretään valikon muut elementit
+    drawDynamicBackground();
     menuStars.forEach(star => drawCollectible(star));
     const titleText = "Oona's Dash";
     ctx.font = `70px "Impact", sans-serif`;
@@ -175,13 +237,9 @@ function drawMenu() {
 }
 
 function drawGameOver() {
-    drawDynamicBackground(); // MUUTETTU: Lisätty taustan piirto
-    
-    // Piirretään tumma kerros taustan päälle
+    drawDynamicBackground();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Piirretään tekstit
     ctx.fillStyle = '#ffffff'; ctx.font = '40px Arial'; ctx.textAlign = 'center';
     ctx.fillText('Peli ohi!', canvas.width / 2, canvas.height / 2 - 40);
     ctx.font = '20px Arial';
@@ -189,8 +247,19 @@ function drawGameOver() {
     ctx.fillText('Jatka päävalikkoon napauttamalla', canvas.width / 2, canvas.height / 2 + 40);
 }
 
-// --- Pelin alustus ja pääsilmukka ---
-function resetGame() { /* ...ei muutoksia... */ }
+function resetGame() {
+    player.y = canvas.height / 2;
+    player.velocityY = 0;
+    player.rotation = 0;
+    obstacles = [];
+    particles = [];
+    collectibles = [];
+    score = 0;
+    gameSpeed = 5;
+    currentColorIndex = 0;
+    colorTransitionProgress = 0;
+}
+
 function gameLoop() {
     animationFrameCounter++;
     if (gameState === 'playing') {
@@ -204,5 +273,44 @@ function gameLoop() {
     }
     requestAnimationFrame(gameLoop);
 }
-function unlockAllAudio() { /* ...ei muutoksia... */ }
-// ... loput funktiot ja event listenerit pysyvät ennallaan ...
+
+function unlockAllAudio() {
+    if (audioInitialized) return;
+    const allAudio = [...musicTracks, ...jumpSounds, ...collectSounds, crashSound];
+    allAudio.forEach(sound => { sound.play(); sound.pause(); sound.currentTime = 0; });
+    audioInitialized = true;
+}
+
+function handleInputPress(x, y) {
+    unlockAllAudio();
+    if (gameState === 'playing') {
+        player.isJumpHeld = true;
+        jump();
+    } else if (gameState === 'menu') {
+        if (x > startButton.x && x < startButton.x + startButton.width && y > startButton.y && y < startButton.y + startButton.height) {
+            resetGame();
+            if (currentMusic) { currentMusic.pause(); }
+            currentMusic = musicTracks[Math.floor(Math.random() * musicTracks.length)];
+            currentMusic.currentTime = 0;
+            currentMusic.play();
+            gameState = 'playing';
+        }
+    } else if (gameState === 'gameOver') {
+        const finalScore = Math.floor(score);
+        const name = prompt(`Peli ohi! Sait ${finalScore} pistettä. Syötä nimesi:`, "Pelaaja");
+        addHighScore(finalScore, name);
+        gameState = 'menu';
+    }
+}
+
+function handleInputRelease() { if (gameState === 'playing') { player.isJumpHeld = false; } }
+window.addEventListener('mousedown', e => { const r = canvas.getBoundingClientRect(); handleInputPress((e.clientX - r.left) * (canvas.width/r.width), (e.clientY - r.top) * (canvas.height/r.height)); });
+window.addEventListener('mouseup', handleInputRelease);
+window.addEventListener('touchstart', e => { e.preventDefault(); const r = canvas.getBoundingClientRect(); const t = e.touches[0]; handleInputPress((t.clientX - r.left) * (canvas.width/r.width), (t.clientY - r.top) * (canvas.height/r.height)); }, { passive: false });
+window.addEventListener('touchend', e => { e.preventDefault(); handleInputRelease(); });
+
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+initializeMenuStars();
+highScores = getHighScores();
+gameLoop();
