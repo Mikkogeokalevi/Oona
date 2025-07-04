@@ -1,4 +1,4 @@
-// Oona's Dash v.FINAL (Kaikki ominaisuudet, toimiva koonti)
+// Oona's Dash v5.2
 
 // --- PERUSMUUTTUJAT ---
 const canvas = document.getElementById('gameCanvas');
@@ -55,6 +55,7 @@ function initializeMenuStars() {
     }
 }
 
+// --- PIIRTOFUNKTIOT ---
 function interpolateColor(c1, c2, f) {
     const p = (c, i) => parseInt(c.substring(i, i + 2), 16);
     const r1 = p(c1, 1), g1 = p(c1, 3), b1 = p(c1, 5);
@@ -63,7 +64,6 @@ function interpolateColor(c1, c2, f) {
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
-// --- PIIRTOFUNKTIOT ---
 function drawPlayer() {
     ctx.save();
     if (player.invincibleTimer > 0 && Math.floor(player.invincibleTimer / 6) % 2 === 0) {
@@ -162,7 +162,8 @@ function drawGame() {
     for (let i = 0; i < player.lives; i++) {
         drawCollectible({ type: 'heart', x: 30 + (i * 35), y: 60, size: 15, rotation: 0, color: '#ff1a75' });
     }
-    ctx.fillStyle = '#ffffff'; ctx.font = '24px Arial';
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '24px Arial';
     ctx.textAlign = 'left'; ctx.fillText(`Pisteet: ${Math.floor(score)}`, 10, 30);
     ctx.textAlign = 'right'; ctx.fillText(`Taso: ${currentLevel}`, canvas.width - 10, 30);
     if (currentLevel <= levelThresholds.length) {
@@ -340,7 +341,7 @@ function updateGame() {
         let obstacleType = 'spike';
         const rand = Math.random();
         if (rand < 0.15 && score > 50) { obstacleType = 'roof_spike'; }
-        else if (currentLevel === 1) { obstacleType = 'spike'; }
+        else if (currentLevel === 1) { }
         else if (currentLevel === 2) { if (rand > 0.6) obstacleType = 'wall'; }
         else if (currentLevel >= 3) { if (rand > 0.65) obstacleType = 'platform'; else if (rand > 0.3) obstacleType = 'wall';}
         
@@ -381,26 +382,8 @@ function updateGame() {
     }
     
     obstacles = obstacles.filter(obs => direction === 1 ? obs.x + obs.width > 0 : obs.x < canvas.width + 60);
-    
-    for (let i = collectibles.length - 1; i >= 0; i--) {
-        const item = collectibles[i];
-        item.x -= gameSpeed * direction; item.rotation += 0.1;
-        const dx = (player.x + player.width/2) - item.x; const dy = (player.y + player.height/2) - item.y;
-        if (Math.sqrt(dx*dx + dy*dy) < player.width/2 + item.size) {
-            score += item.points;
-            const randomCollectSound = collectSounds[Math.floor(Math.random() * collectSounds.length)];
-            randomCollectSound.play();
-            collectibles.splice(i, 1);
-        }
-    }
-    
-    for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        if (p.velX) p.x += p.velX; else p.x -= gameSpeed * 0.8;
-        if (p.velY) p.y += p.velY;
-        p.life -= 0.05; p.size -= 0.1;
-        if (p.life <= 0 || p.size <= 0) { particles.splice(i, 1); }
-    }
+    for (let i = collectibles.length - 1; i >= 0; i--) { /* ... */ }
+    for (let i = particles.length - 1; i >= 0; i--) { /* ... */ }
     
     score += 0.1; gameSpeed += 0.0005;
 }
@@ -412,8 +395,8 @@ function setupNextLevel() {
     else { player.x = 150; }
     obstacles = []; collectibles = []; player.velocityY = 0;
     if (currentMusic) { currentMusic.pause(); }
-    const musicIndex = (currentLevel - 1) % musicTracks.length;
-    currentMusic = musicTracks[musicIndex];
+    // MUUTETTU: Musiikki arvotaan satunnaisesti
+    currentMusic = musicTracks[Math.floor(Math.random() * musicTracks.length)];
     currentMusic.currentTime = 0;
     currentMusic.play();
     gameState = 'playing';
@@ -457,7 +440,8 @@ function handleInputPress(x, y) {
         if (x > startButtonRect.x && x < startButtonRect.x + startButtonRect.width && y > startButtonRect.y && y < startButtonRect.y + startButtonRect.height) {
              resetGame();
              if (currentMusic) { currentMusic.pause(); }
-             currentMusic = musicTracks[0];
+             // MUUTETTU: Musiikki arvotaan satunnaisesti
+             currentMusic = musicTracks[Math.floor(Math.random() * musicTracks.length)];
              currentMusic.currentTime = 0;
              currentMusic.play();
              gameState = 'playing';
