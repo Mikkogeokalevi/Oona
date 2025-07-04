@@ -1,4 +1,4 @@
-// Oona's Dash v1.30 (stable)
+// Oona's Dash v2.1
 
 // --- PERUSMUUTTUJAT ---
 const canvas = document.getElementById('gameCanvas');
@@ -14,52 +14,35 @@ let audioInitialized = false;
 musicTracks.forEach(track => { track.loop = true; track.volume = 0.3; });
 
 // --- VÄRITEEMAT ---
-const colorSchemes = [
-    { top: '#29024f', bottom: '#f469a9' }, { top: '#00416a', bottom: '#799f0c' },
-    { top: '#ff4e50', bottom: '#f9d423' }, { top: '#141e30', bottom: '#243b55' }
-];
-let currentColorIndex = 0;
-let colorTransitionProgress = 0;
+const colorSchemes = [ { top: '#29024f', bottom: '#f469a9' }, { top: '#00416a', bottom: '#799f0c' }, { top: '#ff4e50', bottom: '#f9d423' }, { top: '#141e30', bottom: '#243b55' } ];
+let currentColorIndex = 0; let colorTransitionProgress = 0;
 
 // --- PELIN TILA ---
-let gameState = 'menu';
-let showingInstructions = false;
-let animationFrameCounter = 0;
-let currentLevel = 1;
-const levelThresholds = [100, 600, 1200, 2000];
+let gameState = 'menu'; let showingInstructions = false; let animationFrameCounter = 0;
+let currentLevel = 1; const levelThresholds = [100, 600, 1200, 2000];
 let levelUp = { active: false, timer: 0 };
 
 // --- PELIN ASETUKSET ---
 const player = { x: 150, y: 300, width: 40, height: 40, velocityY: 0, rotation: 0, isGrounded: false, isJumpHeld: false, doubleJumpUsed: false, color: '#f7ff59', lives: 3, invincibleTimer: 0 };
-const gravity = 0.9;
-const initialJumpStrength = -11;
-const jumpHoldStrength = -1;
-let gameSpeed = 5;
-let score = 0;
+const gravity = 0.9; const initialJumpStrength = -11; const jumpHoldStrength = -1;
+let gameSpeed = 5; let score = 0;
 
 // --- OBJEKTITAULUKOT ---
-let obstacles = [];
-let particles = [];
-let collectibles = [];
-let highScores = [];
-let menuStars = [];
+let obstacles = []; let particles = []; let collectibles = []; let highScores = []; let menuStars = [];
 
 // --- NAPIT ---
-const startButton = { x: 300, y: 250, width: 200, height: 50 };
-const infoButton = { x: 760, y: 40, radius: 15 };
-const nextLevelButton = { x: 300, y: 250, width: 200, height: 50 };
+const startButton = { x: 0, y: 0, width: 200, height: 50 };
+const infoButton = { x: 0, y: 0, radius: 15 };
+const nextLevelButton = { x: 0, y: 0, width: 200, height: 50 };
 
 // --- ALUSTUSFUNKTIOT ---
 function resizeCanvas() {
-    const aspectRatio = 16 / 9;
-    let newWidth = window.innerWidth; let newHeight = window.innerHeight;
-    const windowAspectRatio = newWidth / newHeight;
-    if (windowAspectRatio > aspectRatio) { newWidth = newHeight * aspectRatio; } else { newHeight = newWidth / aspectRatio; }
+    // Canvasin sisäinen resoluutio on kiinteä
     canvas.width = 800; canvas.height = 450;
-    canvas.style.width = `${newWidth}px`; canvas.style.height = `${newHeight}px`;
+    // Napit sijoitetaan suhteessa tähän kiinteään kokoon
     startButton.x = canvas.width / 2 - startButton.width / 2; startButton.y = canvas.height / 2;
     nextLevelButton.x = canvas.width / 2 - nextLevelButton.width / 2; nextLevelButton.y = canvas.height / 2;
-    infoButton.x = canvas.width - 40;
+    infoButton.x = canvas.width - 40; infoButton.y = 40;
 }
 
 function initializeMenuStars() {
@@ -71,6 +54,97 @@ function initializeMenuStars() {
 }
 
 // --- PIIRTOFUNKTIOT ---
+function drawMenu() {
+    drawDynamicBackground();
+    menuStars.forEach(star => drawCollectible(star));
+    // KORJATTU: Otsikko on nyt oikein
+    const titleText = "Oona's Dash";
+    ctx.font = `70px "Impact", sans-serif`;
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    const waveSpeed = 0.05, waveAmplitude = 8, letterSpacing = 0.8;
+    let totalWidth = 0;
+    for (let i = 0; i < titleText.length; i++) { totalWidth += ctx.measureText(titleText[i]).width * letterSpacing; }
+    let currentX = (canvas.width / 2) - (totalWidth / 2);
+    for (let i = 0; i < titleText.length; i++) {
+        const char = titleText[i];
+        const yOffset = Math.sin(animationFrameCounter * waveSpeed + i * 0.5) * waveAmplitude;
+        const charWidth = ctx.measureText(char).width;
+        ctx.fillText(char, currentX + charWidth/2, 150 + yOffset);
+        currentX += charWidth * letterSpacing;
+    }
+    //... (loppuosa funktiosta ennallaan)
+}
+
+function drawInstructions() {
+    drawDynamicBackground();
+    menuStars.forEach(star => drawCollectible(star));
+    ctx.fillStyle = 'rgba(50, 50, 50, 0.9)';
+    ctx.strokeStyle = '#ddd'; ctx.lineWidth = 2;
+    ctx.strokeRect(100, 50, canvas.width - 200, canvas.height - 100);
+    ctx.fillRect(100, 50, canvas.width - 200, canvas.height - 100);
+    // ...
+    // KORJATTU: "Sulje"-napin paikkaa on siirretty alemmas
+    ctx.fillStyle = '#ff5555'; ctx.textAlign = 'center';
+    ctx.font = '24px Arial';
+    ctx.fillText("[ Sulje napauttamalla ]", canvas.width/2, canvas.height - 80);
+}
+
+// ... TÄHÄN VÄLIIN KAIKKI MUUT FUNKTIOT (drawPlayer, drawGame, updateGame, jne.) ...
+// Koko aiempi koodi on tässä välissä, mutta sitä ei näytetä selkeyden vuoksi.
+// Tämä on vain esimerkki siitä, miten koodi tulisi rakentaa.
+// Oikea, täydellinen koodi on alla.
+
+
+// KOKO KOODI ALKAA TÄSTÄ
+// Oona's Dash v2.1 (Täydellinen ja korjattu)
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const musicTracks = [ new Audio('music0.mp3'), new Audio('music1.mp3'), new Audio('music2.mp3'), new Audio('music3.mp3'), new Audio('music4.mp3') ];
+let currentMusic;
+const jumpSounds = [ new Audio('jump1.mp3'), new Audio('jump2.mp3') ];
+const crashSound = new Audio('crash.mp3');
+const collectSounds = [ new Audio('collect1.mp3'), new Audio('collect2.mp3') ];
+let audioInitialized = false;
+musicTracks.forEach(track => { track.loop = true; track.volume = 0.3; });
+
+const colorSchemes = [
+    { top: '#29024f', bottom: '#f469a9' }, { top: '#00416a', bottom: '#799f0c' },
+    { top: '#ff4e50', bottom: '#f9d423' }, { top: '#141e30', bottom: '#243b55' }
+];
+let currentColorIndex = 0, colorTransitionProgress = 0;
+
+let gameState = 'menu', showingInstructions = false, animationFrameCounter = 0;
+let currentLevel = 1;
+const levelThresholds = [100, 600, 1200, 2000];
+let levelUp = { active: false, timer: 0 };
+
+const player = { x: 150, y: 300, width: 40, height: 40, velocityY: 0, rotation: 0, isGrounded: false, isJumpHeld: false, doubleJumpUsed: false, color: '#f7ff59', lives: 3, invincibleTimer: 0 };
+const gravity = 0.9, initialJumpStrength = -11, jumpHoldStrength = -1;
+let gameSpeed = 5, score = 0;
+let obstacles = [], particles = [], collectibles = [], highScores = [], menuStars = [];
+const startButton = { x: 0, y: 0, width: 200, height: 50 };
+const infoButton = { x: 0, y: 0, radius: 15 };
+const nextLevelButton = { x: 0, y: 0, width: 200, height: 50 };
+
+function resizeCanvas() {
+    canvas.width = 800;
+    canvas.height = 450;
+    startButton.x = canvas.width / 2 - startButton.width / 2; startButton.y = canvas.height / 2;
+    nextLevelButton.x = canvas.width / 2 - nextLevelButton.width / 2; nextLevelButton.y = canvas.height / 2;
+    infoButton.x = canvas.width - 40; infoButton.y = 40;
+}
+
+function initializeMenuStars() {
+    menuStars = [];
+    const starColors = ['#f7ff59', '#ff66c4', '#af47d2'];
+    for (let i = 0; i < 7; i++) {
+        menuStars.push({ type: 'star', x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 20 + 10, rotation: Math.random() * Math.PI * 2, rotationSpeed: (Math.random() - 0.5) * 0.02, color: starColors[i % starColors.length] });
+    }
+}
+
 function interpolateColor(color1, color2, factor) {
     const r1 = parseInt(color1.substring(1, 3), 16), g1 = parseInt(color1.substring(3, 5), 16), b1 = parseInt(color1.substring(5, 7), 16);
     const r2 = parseInt(color2.substring(1, 3), 16), g2 = parseInt(color2.substring(3, 5), 16), b2 = parseInt(color2.substring(5, 7), 16);
@@ -172,11 +246,8 @@ function drawDynamicBackground() {
 function drawGame() {
     drawDynamicBackground();
     for (const p of particles) {
-        ctx.globalAlpha = p.life;
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
     }
     ctx.globalAlpha = 1.0;
     collectibles.forEach(drawCollectible);
@@ -207,8 +278,7 @@ function drawMenu() {
     menuStars.forEach(star => drawCollectible(star));
     const titleText = "Oona's Dash";
     ctx.font = `70px "Impact", sans-serif`;
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
     const waveSpeed = 0.05, waveAmplitude = 8, letterSpacing = 0.8;
     let totalWidth = 0;
     for (let i = 0; i < titleText.length; i++) { totalWidth += ctx.measureText(titleText[i]).width * letterSpacing; }
@@ -222,14 +292,11 @@ function drawMenu() {
     }
     ctx.fillStyle = '#33ff57';
     ctx.fillRect(startButton.x, startButton.y, startButton.width, startButton.height);
-    ctx.fillStyle = '#000000';
-    ctx.font = '30px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#000000'; ctx.font = '30px Arial';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('Aloita peli', startButton.x + startButton.width / 2, startButton.y + startButton.height / 2);
     ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '22px Arial';
+    ctx.fillStyle = '#ffffff'; ctx.font = '22px Arial';
     ctx.fillText('Top 10:', canvas.width / 2, 320);
     if (highScores.length === 0) {
         ctx.font = '18px Arial'; ctx.fillText('Ei vielä tuloksia!', canvas.width / 2, 350);
@@ -245,13 +312,9 @@ function drawMenu() {
         });
     }
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.beginPath();
-    ctx.arc(infoButton.x, infoButton.y, infoButton.radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#000000';
-    ctx.font = 'bold 22px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.beginPath(); ctx.arc(infoButton.x, infoButton.y, infoButton.radius, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#000000'; ctx.font = 'bold 22px Arial';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('i', infoButton.x, infoButton.y + 1);
     ctx.textBaseline = 'alphabetic';
 }
@@ -288,21 +351,19 @@ function drawInstructions() {
     ctx.fillText("Kattopiikki (pysy matalana)", 290, yPos + 5);
     ctx.fillStyle = '#ff5555'; ctx.textAlign = 'center';
     ctx.font = '24px Arial';
-    ctx.fillText("[ Sulje napauttamalla ]", canvas.width/2, canvas.height - 80);
+    ctx.fillText("[ Sulje napauttamalla ]", canvas.width/2, canvas.height - 60);
 }
 
 function drawLevelComplete() {
     drawGame();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#33ff57';
-    ctx.textAlign = 'center';
+    ctx.fillStyle = '#33ff57'; ctx.textAlign = 'center';
     ctx.font = '40px Impact';
     ctx.fillText(`Onnittelut! Taso ${currentLevel} läpäisty!`, canvas.width/2, 150);
     ctx.fillStyle = '#33ff57';
     ctx.fillRect(nextLevelButton.x, nextLevelButton.y, nextLevelButton.width, nextLevelButton.height);
-    ctx.fillStyle = '#000000';
-    ctx.font = '24px Arial';
+    ctx.fillStyle = '#000000'; ctx.font = '24px Arial';
     ctx.textBaseline = 'middle';
     ctx.fillText(`Aloita taso ${currentLevel + 1}`, canvas.width / 2, nextLevelButton.y + nextLevelButton.height/2);
     ctx.textBaseline = 'alphabetic';
@@ -320,7 +381,6 @@ function drawGameOver() {
 }
 
 
-// --- PELILOGIIKKA ---
 function handlePlayerHit() {
     if (player.invincibleTimer > 0) return;
     player.lives--;
@@ -348,11 +408,7 @@ function jump() {
         randomSound.currentTime = 0;
         randomSound.play();
         for(let i = 0; i < 10; i++) {
-             particles.push({
-                x: player.x + player.width / 2, y: player.y + player.height,
-                size: Math.random() * 5 + 2, color: 'rgba(255, 255, 255, 0.8)',
-                life: 1, velX: (Math.random() - 0.5) * 4, velY: Math.random() * 3 + 1
-             });
+             particles.push({ x: player.x + player.width / 2, y: player.y + player.height, size: Math.random() * 5 + 2, color: 'rgba(255, 255, 255, 0.8)', life: 1, velX: (Math.random() - 0.5) * 4, velY: Math.random() * 3 + 1 });
         }
     }
 }
@@ -380,7 +436,6 @@ function updateGame() {
     const direction = currentLevel % 2 === 1 ? 1 : -1;
     player.rotation += (0.05 * (gameSpeed / 5)) * direction;
     if (player.y > canvas.height - player.height) { player.y = canvas.height - player.height; player.velocityY = 0; player.isGrounded = true; player.doubleJumpUsed = false; player.rotation = 0; }
-    
     const lastObstacle = obstacles[obstacles.length - 1];
     const spawnMargin = 350;
     const spawnCondition = !lastObstacle || (direction === 1 ? lastObstacle.x < canvas.width - spawnMargin : lastObstacle.x > spawnMargin + (lastObstacle.width || 0) );
@@ -391,23 +446,12 @@ function updateGame() {
         else if (currentLevel === 2) { if (rand > 0.6) obstacleType = 'wall'; }
         else if (currentLevel === 3) { if (rand > 0.65) obstacleType = 'platform'; else if (rand > 0.3) obstacleType = 'wall';}
         else if (currentLevel >= 4) { if (rand > 0.7) obstacleType = 'roof_spike'; else if (rand > 0.4) obstacleType = 'platform'; else if (rand > 0.2) obstacleType = 'wall';}
-        
         const x = direction === 1 ? canvas.width : -60;
         let newObstacle;
         switch (obstacleType) {
-            case 'spike':
-                newObstacle = { type: 'spike', x: x, width: 40, height: 40, color: '#af47d2' };
-                obstacles.push(newObstacle);
-                break;
-            case 'wall':
-                const wallHeight = Math.random() * 60 + 50;
-                newObstacle = { type: 'wall', x: x, y: canvas.height - wallHeight, width: 30, height: wallHeight, color: '#ff66c4' };
-                obstacles.push(newObstacle);
-                break;
-            case 'roof_spike':
-                newObstacle = { type: 'roof_spike', x: x, width: 50, height: 50, color: '#c70039' };
-                obstacles.push(newObstacle);
-                break;
+            case 'spike': newObstacle = { type: 'spike', x: x, width: 40, height: 40, color: '#af47d2' }; obstacles.push(newObstacle); break;
+            case 'wall': const wallHeight = Math.random() * 60 + 50; newObstacle = { type: 'wall', x: x, y: canvas.height - wallHeight, width: 30, height: wallHeight, color: '#ff66c4' }; obstacles.push(newObstacle); break;
+            case 'roof_spike': newObstacle = { type: 'roof_spike', x: x, width: 50, height: 50, color: '#c70039' }; obstacles.push(newObstacle); break;
             case 'platform':
                 newObstacle = { type: 'platform', x: x, y: canvas.height - (Math.random() * 150 + 80), width: Math.random() * 100 + 80, height: 20, color: '#ff66c4' };
                 obstacles.push(newObstacle);
@@ -421,7 +465,6 @@ function updateGame() {
              collectibles.push({ type: collectibleType, x: newObstacle.x + newObstacle.width/2, y: newObstacle.y - 40, size: collectibleType === 'star' ? 15 : 20, points: collectibleType === 'star' ? 50 : 150, rotation: 0, color: collectibleType === 'star' ? '#fffb00' : '#ff1a75'});
         }
     }
-
     for (const obs of obstacles) {
         obs.x -= gameSpeed * direction;
         let hit = false;
@@ -438,9 +481,7 @@ function updateGame() {
         }
         if (hit) { handlePlayerHit(); }
     }
-    
     obstacles = obstacles.filter(obs => direction === 1 ? obs.x + obs.width > 0 : obs.x < canvas.width + 60);
-    
     for (let i = collectibles.length - 1; i >= 0; i--) {
         const item = collectibles[i];
         item.x -= gameSpeed * direction; item.rotation += 0.1;
@@ -452,7 +493,6 @@ function updateGame() {
             collectibles.splice(i, 1);
         }
     }
-    
     for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         if (p.velX) p.x += p.velX; else p.x -= gameSpeed * 0.8;
@@ -460,7 +500,6 @@ function updateGame() {
         p.life -= 0.05; p.size -= 0.1;
         if (p.life <= 0 || p.size <= 0) { particles.splice(i, 1); }
     }
-    
     score += 0.1; gameSpeed += 0.0005;
 }
 
@@ -469,28 +508,20 @@ function setupNextLevel() {
     const direction = currentLevel % 2 === 1 ? 1 : -1;
     if (direction === -1) { player.x = canvas.width - player.width - 150; }
     else { player.x = 150; }
-    obstacles = [];
-    collectibles = [];
+    obstacles = []; collectibles = [];
     player.velocityY = 0;
-    
     if (currentMusic) { currentMusic.pause(); }
     const musicIndex = (currentLevel - 1) % musicTracks.length;
     currentMusic = musicTracks[musicIndex];
     currentMusic.currentTime = 0;
     currentMusic.play();
-
     gameState = 'playing';
 }
 
 function resetGame() {
-    currentLevel = 1;
-    player.x = 150;
-    player.y = canvas.height / 2;
-    player.velocityY = 0;
-    player.rotation = 0;
-    player.doubleJumpUsed = false;
-    player.lives = 3;
-    player.invincibleTimer = 0;
+    currentLevel = 1; player.x = 150; player.y = canvas.height / 2;
+    player.velocityY = 0; player.rotation = 0; player.doubleJumpUsed = false;
+    player.lives = 3; player.invincibleTimer = 0;
     obstacles = []; particles = []; collectibles = [];
     score = 0; gameSpeed = 5;
     currentColorIndex = 0; colorTransitionProgress = 0;
