@@ -1,4 +1,4 @@
-// Oona's Dash v1.20
+// Oona's Dash v1.22
 
 // --- PERUSMUUTTUJAT ---
 const canvas = document.getElementById('gameCanvas');
@@ -23,18 +23,15 @@ let colorTransitionProgress = 0;
 
 // --- PELIN TILA ---
 let gameState = 'menu';
+let showingInstructions = false; // UUSI: Ohjeikkunan tilan seuranta
 let animationFrameCounter = 0;
 let currentLevel = 1;
-const levelThresholds = [500, 1500, 3000, 5000];
+// MUUTETTU: Tasapainotettu pisterajoja
+const levelThresholds = [200, 600, 1200, 2000];
 let levelUp = { active: false, timer: 0 };
 
 // --- PELIN ASETUKSET ---
-const player = {
-    x: 150, y: 300, width: 40, height: 40,
-    velocityX: 0, velocityY: 0, rotation: 0,
-    isGrounded: false, isJumpHeld: false, doubleJumpUsed: false,
-    color: '#f7ff59'
-};
+const player = { x: 150, y: 300, width: 40, height: 40, velocityY: 0, rotation: 0, isGrounded: false, isJumpHeld: false, doubleJumpUsed: false, color: '#f7ff59' };
 const gravity = 0.9;
 const initialJumpStrength = -11;
 const jumpHoldStrength = -1;
@@ -48,4 +45,8 @@ let collectibles = [];
 let highScores = [];
 let menuStars = [];
 
+// --- NAPIT ---
 const startButton = { x: 300, y: 250, width: 200, height: 50 };
+// UUSI: Info-napin ja muiden koordinaatit
+const infoButton = { x: canvas.width - 40, y: 40, radius: 15 };
+const nextLevelButton = { x: 300, y: 250, width: 200, height: 50 };
