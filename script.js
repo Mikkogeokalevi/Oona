@@ -7,9 +7,8 @@ const musicTracks = [ new Audio('music1.mp3'), new Audio('music2.mp3'), new Audi
 let currentMusic;
 const jumpSounds = [ new Audio('jump1.mp3'), new Audio('jump2.mp3') ];
 const crashSound = new Audio('crash.mp3');
-// UUSI: Keräilyäänet
 const collectSounds = [ new Audio('collect1.mp3'), new Audio('collect2.mp3') ];
-let audioInitialized = false; // UUSI: Seurataan, onko äänet "avattu"
+let audioInitialized = false;
 
 musicTracks.forEach(track => { track.loop = true; track.volume = 0.3; });
 
@@ -19,18 +18,18 @@ let gameState = 'menu';
 const player = {
     x: 150, y: 300, width: 40, height: 40,
     velocityY: 0, rotation: 0, isGrounded: false,
-    isJumpHeld: false, // UUSI: Seuraa, onko hyppynappia pidetty pohjassa
+    isJumpHeld: false,
     color: '#f7ff59'
 };
 
-const gravity = 0.9; // Hiukan vahvempi painovoima säädettävää hyppyä varten
-const initialJumpStrength = -10; // UUSI: Hypyn alkuvoima
-const jumpHoldStrength = -1;  // UUSI: Voima, jolla hyppyä jatketaan
+const gravity = 0.9;
+const initialJumpStrength = -10;
+const jumpHoldStrength = -1;
 let gameSpeed = 5;
 let score = 0;
 let obstacles = [];
 let particles = [];
-let collectibles = []; // UUSI: Taulukko kerättäville tähdille
+let collectibles = [];
 let highScores = [];
 
 const startButton = { x: 300, y: 250, width: 200, height: 50 };
@@ -65,7 +64,6 @@ function jump() {
     }
 }
 
-// UUSI: Piirtofunktio tähdelle
 function drawStar(star) {
     ctx.fillStyle = star.color;
     ctx.save();
@@ -102,7 +100,6 @@ function addHighScore(newScore, newName) { if (!newName || newScore === 0) retur
 function updateGame() {
     player.isGrounded = false;
 
-    // MUUTETTU: Säädettävä hyppy
     if (player.isJumpHeld && player.velocityY < 0) {
         player.velocityY += jumpHoldStrength;
     }
@@ -112,25 +109,22 @@ function updateGame() {
 
     if (player.y > canvas.height - player.height) { player.y = canvas.height - player.height; player.velocityY = 0; player.isGrounded = true; player.rotation = 0; }
 
-    // Esteiden, seinien ja kerättävien luominen
     if (obstacles.length === 0 || obstacles[obstacles.length - 1].x < canvas.width - 300) {
         const rand = Math.random();
-        if (rand < 0.60) { // 60% piikki
+        if (rand < 0.60) {
             obstacles.push({ type: 'spike', x: canvas.width, width: 60, height: 60, color: '#af47d2' });
-        } else if (rand < 0.85) { // 25% taso
+        } else if (rand < 0.85) {
             obstacles.push({ type: 'platform', x: canvas.width, y: canvas.height - (Math.random() * 150 + 80), width: Math.random() * 100 + 80, height: 20, color: '#ff66c4' });
-        } else { // 15% seinä
+        } else {
             const wallHeight = Math.random() * 60 + 50;
             obstacles.push({ type: 'wall', x: canvas.width, y: canvas.height - wallHeight, width: 30, height: wallHeight, color: '#ff66c4' });
         }
-        // UUSI: Lisää tähti satunnaisesti esteen yhteyteen
         const lastObstacle = obstacles[obstacles.length-1];
         if (Math.random() < 0.4) {
              collectibles.push({x: lastObstacle.x + lastObstacle.width / 2, y: lastObstacle.y - 40, size: 15, rotation: 0, color: '#fffb00'});
         }
     }
 
-    // Esteiden ja tasojen käsittely & törmäykset
     for (const obs of obstacles) {
         obs.x -= gameSpeed;
         if (obs.type === 'platform' || obs.type === 'wall') {
@@ -139,33 +133,28 @@ function updateGame() {
             if (onTop) {
                 player.y = obs.y - player.height; player.velocityY = 0; player.isGrounded = true; player.rotation = 0;
             }
-            // UUSI: Seinään törmäys
             if (obs.type === 'wall' && !onTop && player.x + player.width > obs.x && player.x < obs.x + obs.width && player.y + player.height > obs.y) {
                 if (currentMusic) { currentMusic.pause(); } crashSound.play(); gameState = 'gameOver';
             }
         }
-        // Piikkiin törmäys on tarkoituksella sallittu (ei törmäystä)
     }
     obstacles = obstacles.filter(obs => obs.x + obs.width > 0);
 
-    // UUSI: Kerättävien tähtien käsittely
     for (let i = collectibles.length - 1; i >= 0; i--) {
         const star = collectibles[i];
         star.x -= gameSpeed;
         star.rotation += 0.1;
-        // Törmäys pelaajaan
         const dx = (player.x + player.width/2) - star.x;
         const dy = (player.y + player.height/2) - star.y;
         if (Math.sqrt(dx*dx + dy*dy) < player.width/2 + star.size) {
-            score += 50; // Lisää pisteitä
+            score += 50;
             const randomCollectSound = collectSounds[Math.floor(Math.random() * collectSounds.length)];
-            randomCollectSound.play(); // Soita keräysääni
-            collectibles.splice(i, 1); // Poista tähti
+            randomCollectSound.play();
+            collectibles.splice(i, 1);
         }
-        if (star.x < -20) collectibles.splice(i, 1); // Poista ruudun ulkopuolelta
+        if (star.x < -20) collectibles.splice(i, 1);
     }
 
-    // Partikkelien käsittely
     particles.push({ x: player.x + 5, y: player.y + player.height / 2, size: Math.random() * 4 + 2, color: 'rgba(247, 255, 89, 0.5)', life: 1 });
     particles = particles.filter(p => { p.x -= gameSpeed * 0.8; p.life -= 0.05; p.size -= 0.1; return p.life > 0 && p.size > 0; });
     score += 0.1; gameSpeed += 0.0005;
@@ -176,21 +165,76 @@ function drawGame() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     particles.forEach(p => { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); });
     ctx.globalAlpha = 1.0;
-    collectibles.forEach(drawStar); // Piirrä tähdet
+    collectibles.forEach(drawStar);
     drawPlayer();
     obstacles.forEach(drawObstacle);
     ctx.fillStyle = '#ffffff'; ctx.font = '24px Arial'; ctx.textAlign = 'left';
     ctx.fillText(`Pisteet: ${Math.floor(score)}`, 10, 30);
 }
 
-function drawMenu() { /*... (ei muutoksia)...*/ }
-function drawGameOver() { /*... (ei muutoksia)...*/ }
+function drawMenu() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    
+    ['#f7ff59', '#ff66c4', '#af47d2'].forEach((color, i) => {
+        ctx.font = `${60 + i*20}px Arial`;
+        ctx.fillStyle = color;
+        ctx.fillText('★', 100 + i*150, 150 + i*50);
+    });
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '70px "Impact", sans-serif';
+    ctx.fillText("Oona's Dash", canvas.width / 2, 150);
+
+    ctx.fillStyle = '#33ff57';
+    ctx.fillRect(startButton.x, startButton.y, startButton.width, startButton.height);
+    ctx.fillStyle = '#000000'; ctx.font = '30px Arial';
+    ctx.fillText('Aloita peli', canvas.width / 2, startButton.y + 35);
+
+    ctx.fillStyle = '#ffffff'; ctx.font = '24px Arial';
+    ctx.fillText('Top 10:', canvas.width / 2, 350);
+    if (highScores.length === 0) {
+        ctx.font = '18px Arial';
+        ctx.fillText('Ei vielä tuloksia!', canvas.width / 2, 390);
+    } else {
+        highScores.forEach((entry, index) => {
+            ctx.font = '20px Arial';
+            ctx.fillText(`${index + 1}. ${entry.name}: ${entry.score}`, canvas.width / 2, 390 + index * 25);
+        });
+    }
+}
+
+function drawGameOver() {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff'; ctx.font = '40px Arial'; ctx.textAlign = 'center';
+    ctx.fillText('Peli ohi!', canvas.width / 2, canvas.height / 2 - 40);
+    ctx.font = '20px Arial';
+    ctx.fillText(`Sait ${Math.floor(score)} pistettä`, canvas.width / 2, canvas.height / 2);
+    ctx.fillText('Jatka päävalikkoon napauttamalla', canvas.width / 2, canvas.height / 2 + 40);
+}
 
 // --- Pelin alustus ja pääsilmukka ---
-function resetGame() { player.y = canvas.height / 2; player.velocityY = 0; player.rotation = 0; obstacles = []; particles = []; collectibles = []; score = 0; gameSpeed = 5; }
-function gameLoop() { if (gameState === 'playing') { updateGame(); drawGame(); } else if (gameState === 'menu') { drawMenu(); } else if (gameState === 'gameOver') { drawGameOver(); } requestAnimationFrame(gameLoop); }
+function resetGame() {
+    player.y = canvas.height / 2;
+    player.velocityY = 0; player.rotation = 0;
+    obstacles = []; particles = []; collectibles = [];
+    score = 0; gameSpeed = 5;
+}
 
-// UUSI: Funktio äänien "avaamiseksi" mobiililaitteilla
+function gameLoop() {
+    if (gameState === 'playing') {
+        updateGame();
+        drawGame();
+    } else if (gameState === 'menu') {
+        drawMenu();
+    } else if (gameState === 'gameOver') {
+        drawGameOver();
+    }
+    requestAnimationFrame(gameLoop);
+}
+
 function unlockAllAudio() {
     if (audioInitialized) return;
     const allAudio = [...musicTracks, ...jumpSounds, ...collectSounds, crashSound];
@@ -204,7 +248,7 @@ function unlockAllAudio() {
 
 // --- Tapahtumankäsittelijät ---
 function handleInputPress(x, y) {
-    unlockAllAudio(); // Avataan äänet ensimmäisellä painalluksella
+    unlockAllAudio();
     if (gameState === 'playing') {
         player.isJumpHeld = true;
         jump();
@@ -224,21 +268,20 @@ function handleInputPress(x, y) {
         gameState = 'menu';
     }
 }
-// UUSI: Käsittelijä painikkeen vapauttamiselle
+
 function handleInputRelease() {
     if (gameState === 'playing') {
         player.isJumpHeld = false;
     }
 }
 
-// Lisätään kuuntelijat
 window.addEventListener('mousedown', e => { const r = canvas.getBoundingClientRect(); handleInputPress((e.clientX - r.left) * (canvas.width/r.width), (e.clientY - r.top) * (canvas.height/r.height)); });
 window.addEventListener('mouseup', handleInputRelease);
 window.addEventListener('touchstart', e => { e.preventDefault(); const r = canvas.getBoundingClientRect(); const t = e.touches[0]; handleInputPress((t.clientX - r.left) * (canvas.width/r.width), (t.clientY - r.top) * (canvas.height/r.height)); }, { passive: false });
 window.addEventListener('touchend', e => { e.preventDefault(); handleInputRelease(); });
 
 // --- Pelin käynnistys ---
-window.addEventListener('resize', resizeCanvas); resizeCanvas(); highScores = getHighScores(); gameLoop();
-
-// HUOM: Olen lyhentänyt joitain rivejä, jotka eivät muuttuneet, jotta koodi mahtuu paremmin.
-// `drawMenu` ja `drawGameOver` ovat ennallaan. Voit kopioida tämän tiedoston kokonaan.
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+highScores = getHighScores();
+gameLoop();
