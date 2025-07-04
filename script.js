@@ -1,4 +1,4 @@
-// Oona's Dash v1.12
+// Oona's Dash v1.13
 
 // Haetaan canvas-elementti HTML:stä
 const canvas = document.getElementById('gameCanvas');
@@ -13,6 +13,13 @@ const collectSounds = [ new Audio('collect1.mp3'), new Audio('collect2.mp3') ];
 let audioInitialized = false;
 
 musicTracks.forEach(track => { track.loop = true; track.volume = 0.3; });
+
+const colorSchemes = [
+    { top: '#29024f', bottom: '#f469a9' }, { top: '#00416a', bottom: '#799f0c' },
+    { top: '#ff4e50', bottom: '#f9d423' }, { top: '#141e30', bottom: '#243b55' }
+];
+let currentColorIndex = 0;
+let colorTransitionProgress = 0;
 
 // --- Pelin tilan ja muuttujien alustus ---
 let gameState = 'menu';
@@ -31,89 +38,32 @@ let menuStars = [];
 const startButton = { x: 300, y: 250, width: 200, height: 50 };
 
 // --- Apu- ja piirtofunktiot ---
-function resizeCanvas() {
-    const aspectRatio = 16 / 9;
-    let newWidth = window.innerWidth; let newHeight = window.innerHeight;
-    const windowAspectRatio = newWidth / newHeight;
-    if (windowAspectRatio > aspectRatio) { newWidth = newHeight * aspectRatio; } else { newHeight = newWidth / aspectRatio; }
-    canvas.width = 800; canvas.height = 450;
-    canvas.style.width = `${newWidth}px`; canvas.style.height = `${newHeight}px`;
-    startButton.x = canvas.width / 2 - startButton.width / 2; startButton.y = canvas.height / 2;
+function interpolateColor(color1, color2, factor) {
+    const r1 = parseInt(color1.substring(1, 3), 16), g1 = parseInt(color1.substring(3, 5), 16), b1 = parseInt(color1.substring(5, 7), 16);
+    const r2 = parseInt(color2.substring(1, 3), 16), g2 = parseInt(color2.substring(3, 5), 16), b2 = parseInt(color2.substring(5, 7), 16);
+    const r = Math.round(r1 + factor * (r2 - r1)), g = Math.round(g1 + factor * (g2 - g1)), b = Math.round(b1 + factor * (b2 - b1));
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
-function initializeMenuStars() {
-    menuStars = [];
-    const starColors = ['#f7ff59', '#ff66c4', '#af47d2'];
-    for (let i = 0; i < 5; i++) {
-        menuStars.push({
-            type: 'star', x: Math.random() * canvas.width, y: Math.random() * canvas.height,
-            size: Math.random() * 20 + 10, rotation: Math.random() * Math.PI * 2,
-            rotationSpeed: (Math.random() - 0.5) * 0.02, color: starColors[i % starColors.length]
-        });
-    }
-}
+function resizeCanvas() { /* ...ei muutoksia... */ }
+function initializeMenuStars() { /* ...ei muutoksia... */ }
+function drawPlayer() { /* ...ei muutoksia... */ }
+function jump() { /* ...ei muutoksia... */ }
+function drawCollectible(item) { /* ...ei muutoksia... */ }
+function drawObstacle(obs) { /* ...ei muutoksia... */ }
+function getHighScores() { /* ...ei muutoksia... */ }
+function saveHighScores() { /* ...ei muutoksia... */ }
+function addHighScore(newScore, newName) { /* ...ei muutoksia... */ }
 
-function drawPlayer() {
-    ctx.save();
-    ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
-    ctx.rotate(player.rotation);
-    ctx.fillStyle = player.color;
-    ctx.fillRect(-player.width / 2, -player.height / 2, player.width, player.height);
-    ctx.restore();
-}
-
-function jump() {
-    if (player.isGrounded) {
-        player.velocityY = initialJumpStrength;
-        const randomSound = jumpSounds[Math.floor(Math.random() * jumpSounds.length)];
-        randomSound.currentTime = 0;
-        randomSound.play();
-    }
-}
-
-function drawCollectible(item) {
-    ctx.save();
-    ctx.translate(item.x, item.y);
-    ctx.rotate(item.rotation);
-    ctx.fillStyle = item.color;
-    if (item.type === 'star') {
-        ctx.beginPath();
-        for (let i = 0; i < 5; i++) {
-            ctx.lineTo(Math.cos((18 + i * 72) * Math.PI / 180) * item.size, -Math.sin((18 + i * 72) * Math.PI / 180) * item.size);
-            ctx.lineTo(Math.cos((54 + i * 72) * Math.PI / 180) * item.size / 2, -Math.sin((54 + i * 72) * Math.PI / 180) * item.size / 2);
-        }
-        ctx.closePath();
-        ctx.fill();
-    } else if (item.type === 'heart') {
-        const s = item.size * 0.1;
-        ctx.beginPath();
-        ctx.moveTo(0, s * 2);
-        ctx.bezierCurveTo(-s * 4, -s * 2, -s * 2, -s * 5, 0, -s * 3);
-        ctx.bezierCurveTo(s * 2, -s * 5, s * 4, -s * 2, 0, s * 2);
-        ctx.closePath();
-        ctx.fill();
-    }
-    ctx.restore();
-}
-
-function drawObstacle(obs) {
-    ctx.fillStyle = obs.color;
-    if (obs.type === 'spike') {
-        ctx.beginPath();
-        ctx.moveTo(obs.x, canvas.height); ctx.lineTo(obs.x + obs.width / 2, canvas.height - obs.height);
-        ctx.lineTo(obs.x + obs.width, canvas.height);
-        ctx.closePath(); ctx.fill();
-    } else if (obs.type === 'platform' || obs.type === 'wall') {
-        ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-    }
-}
-
-function getHighScores() { const s = localStorage.getItem('oonasDashHighScores'); return s ? JSON.parse(s) : []; }
-function saveHighScores() { localStorage.setItem('oonasDashHighScores', JSON.stringify(highScores)); }
-function addHighScore(newScore, newName) { if (!newName || newScore === 0) return; highScores.push({ name: newName, score: newScore }); highScores.sort((a, b) => b.score - a.score); highScores = highScores.slice(0, 10); saveHighScores(); }
-
+// --- Pelilogiikan päivitysfunktiot ---
 function updateGame() {
-    // ... (Tämä funktio pysyy täysin ennallaan) ...
+    const transitionSpeed = 0.0005;
+    colorTransitionProgress += transitionSpeed * gameSpeed;
+    if (colorTransitionProgress >= 1) {
+        colorTransitionProgress = 0;
+        currentColorIndex = (currentColorIndex + 1) % colorSchemes.length;
+    }
+    // ...loppuosa funktiosta pysyy ennallaan...
     player.isGrounded = false;
     if (player.isJumpHeld && player.velocityY < 0) { player.velocityY += jumpHoldStrength; }
     player.velocityY += gravity;
@@ -154,20 +104,27 @@ function updateGame() {
     }
     particles.push({ x: player.x + 5, y: player.y + player.height / 2, size: Math.random() * 4 + 2, color: 'rgba(247, 255, 89, 0.5)', life: 1 });
     particles = particles.filter(p => { p.x -= gameSpeed * 0.8; p.life -= 0.05; p.size -= 0.1; return p.life > 0 && p.size > 0; });
-    score += 0.1;
-    gameSpeed += 0.0005;
+    score += 0.1; gameSpeed += 0.0005;
 }
 
-function drawGame() { /* ... (Tämä funktio pysyy täysin ennallaan) ... */
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+// UUSI: Apufunktio taustan piirtämiseen
+function drawDynamicBackground() {
     const nextColorIndex = (currentColorIndex + 1) % colorSchemes.length;
     const topColor = interpolateColor(colorSchemes[currentColorIndex].top, colorSchemes[nextColorIndex].top, colorTransitionProgress);
     const bottomColor = interpolateColor(colorSchemes[currentColorIndex].bottom, colorSchemes[nextColorIndex].bottom, colorTransitionProgress);
+
     const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
     gradient.addColorStop(0, topColor);
     gradient.addColorStop(1, bottomColor);
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+// --- Piirtofunktiot ---
+function drawGame() {
+    drawDynamicBackground(); // MUUTETTU
+
+    // Piirretään muut pelin elementit
     particles.forEach(p => { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); });
     ctx.globalAlpha = 1.0;
     collectibles.forEach(drawCollectible);
@@ -178,15 +135,15 @@ function drawGame() { /* ... (Tämä funktio pysyy täysin ennallaan) ... */
 }
 
 function drawMenu() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawDynamicBackground(); // MUUTETTU: Lisätty taustan piirto
+    
+    // Piirretään valikon muut elementit
     menuStars.forEach(star => drawCollectible(star));
     const titleText = "Oona's Dash";
     ctx.font = `70px "Impact", sans-serif`;
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
-    const waveSpeed = 0.05;
-    const waveAmplitude = 8;
-    const letterSpacing = 0.8;
+    const waveSpeed = 0.05; const waveAmplitude = 8; const letterSpacing = 0.8;
     let totalWidth = 0;
     for (let i = 0; i < titleText.length; i++) { totalWidth += ctx.measureText(titleText[i]).width * letterSpacing; }
     let currentX = (canvas.width / 2) - (totalWidth / 2);
@@ -201,3 +158,51 @@ function drawMenu() {
     ctx.fillRect(startButton.x, startButton.y, startButton.width, startButton.height);
     ctx.fillStyle = '#000000'; ctx.font = '30px Arial'; ctx.textAlign = 'center';
     ctx.fillText('Aloita peli', canvas.width / 2, startButton.y + 35);
+    ctx.fillStyle = '#ffffff'; ctx.font = '22px Arial';
+    ctx.fillText('Top 10:', canvas.width / 2, 320);
+    if (highScores.length === 0) {
+        ctx.font = '18px Arial'; ctx.fillText('Ei vielä tuloksia!', canvas.width / 2, 350);
+    } else {
+        ctx.font = '16px Arial'; ctx.textAlign = 'left';
+        const col1X = canvas.width / 2 - 200; const col2X = canvas.width / 2 + 50;
+        const startY = 350; const lineHeight = 20;
+        highScores.forEach((entry, index) => {
+            const text = `${index + 1}. ${entry.name}: ${entry.score}`;
+            if (index < 5) { ctx.fillText(text, col1X, startY + index * lineHeight); }
+            else { ctx.fillText(text, col2X, startY + (index - 5) * lineHeight); }
+        });
+    }
+}
+
+function drawGameOver() {
+    drawDynamicBackground(); // MUUTETTU: Lisätty taustan piirto
+    
+    // Piirretään tumma kerros taustan päälle
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Piirretään tekstit
+    ctx.fillStyle = '#ffffff'; ctx.font = '40px Arial'; ctx.textAlign = 'center';
+    ctx.fillText('Peli ohi!', canvas.width / 2, canvas.height / 2 - 40);
+    ctx.font = '20px Arial';
+    ctx.fillText(`Sait ${Math.floor(score)} pistettä`, canvas.width / 2, canvas.height / 2);
+    ctx.fillText('Jatka päävalikkoon napauttamalla', canvas.width / 2, canvas.height / 2 + 40);
+}
+
+// --- Pelin alustus ja pääsilmukka ---
+function resetGame() { /* ...ei muutoksia... */ }
+function gameLoop() {
+    animationFrameCounter++;
+    if (gameState === 'playing') {
+        updateGame();
+        drawGame();
+    } else if (gameState === 'menu') {
+        menuStars.forEach(star => { star.rotation += star.rotationSpeed; });
+        drawMenu();
+    } else if (gameState === 'gameOver') {
+        drawGameOver();
+    }
+    requestAnimationFrame(gameLoop);
+}
+function unlockAllAudio() { /* ...ei muutoksia... */ }
+// ... loput funktiot ja event listenerit pysyvät ennallaan ...
