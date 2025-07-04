@@ -1,4 +1,4 @@
-// Oona's Dash v1.19 - Piirtofunktiot
+// Oona's Dash v1.20 - Piirtofunktiot
 
 function interpolateColor(color1, color2, factor) {
     const r1 = parseInt(color1.substring(1, 3), 16), g1 = parseInt(color1.substring(3, 5), 16), b1 = parseInt(color1.substring(5, 7), 16);
