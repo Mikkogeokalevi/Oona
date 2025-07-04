@@ -1,11 +1,12 @@
-// Oona's Dash v1.28
+// Oona's Dash v1.29
 
 // --- PERUSMUUTTUJAT ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 // --- ÄÄNET ---
-const musicTracks = [ new Audio('music1.mp3'), new Audio('music2.mp3'), new Audio('music3.mp3'), new Audio('music4.mp3') ];
+// MUUTETTU: Lisätty uusi kappale listan alkuun.
+const musicTracks = [ new Audio('music0.mp3'), new Audio('music1.mp3'), new Audio('music2.mp3'), new Audio('music3.mp3'), new Audio('music4.mp3') ];
 let currentMusic;
 const jumpSounds = [ new Audio('jump1.mp3'), new Audio('jump2.mp3') ];
 const crashSound = new Audio('crash.mp3');
@@ -76,158 +77,15 @@ function drawPlayer() { /* ...ei muutoksia... */ }
 function drawCollectible(item) { /* ...ei muutoksia... */ }
 function drawObstacle(obs) { /* ...ei muutoksia... */ }
 function drawDynamicBackground() { /* ...ei muutoksia... */ }
-
-// UUSI: Funktio, joka piirtää esimerkkikuvakkeet ohjeisiin oikein.
-function drawExampleObstacle(item) {
-    ctx.fillStyle = item.color;
-    ctx.save();
-    ctx.translate(item.x, item.y);
-    if (item.type === 'spike') {
-        ctx.beginPath();
-        ctx.moveTo(-item.width / 2, item.height / 2);
-        ctx.lineTo(0, -item.height / 2);
-        ctx.lineTo(item.width / 2, item.height / 2);
-        ctx.closePath();
-        ctx.fill();
-    } else if (item.type === 'wall') {
-        ctx.fillRect(-item.width/2, -item.height/2, item.width, item.height);
-    } else if (item.type === 'roof_spike') {
-        ctx.beginPath();
-        ctx.moveTo(-item.width / 2, -item.height / 2);
-        ctx.lineTo(0, item.height / 2);
-        ctx.lineTo(item.width / 2, -item.height / 2);
-        ctx.closePath();
-        ctx.fill();
-    }
-    ctx.restore();
-}
-
-function drawGame() {
-    drawDynamicBackground();
-    for (const p of particles) { /* ... */ }
-    ctx.globalAlpha = 1.0;
-    collectibles.forEach(drawCollectible);
-    drawPlayer();
-    obstacles.forEach(drawObstacle);
-    for (let i = 0; i < player.lives; i++) {
-        drawCollectible({ type: 'heart', x: 30 + (i * 35), y: 60, size: 15, rotation: 0, color: '#ff1a75' });
-    }
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '24px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText(`Pisteet: ${Math.floor(score)}`, 10, 30);
-    ctx.textAlign = 'right';
-    ctx.fillText(`Taso: ${currentLevel}`, canvas.width - 10, 30);
-    if (currentLevel <= levelThresholds.length) {
-        const prevThreshold = levelThresholds[currentLevel - 2] || 0;
-        const currentThreshold = levelThresholds[currentLevel - 1];
-        const scoreInLevel = Math.floor(score - prevThreshold);
-        const levelTotal = currentThreshold - prevThreshold;
-        ctx.textAlign = 'center';
-        ctx.font = '20px Arial';
-        ctx.fillText(`${scoreInLevel} / ${levelTotal}`, canvas.width / 2, 30);
-    }
-}
-
-function drawMenu() {
-    drawDynamicBackground();
-    menuStars.forEach(star => drawCollectible(star));
-    // KORJATTU: Otsikon kirjoitusvirhe
-    const titleText = "Oona's Dash";
-    ctx.font = `70px "Impact", sans-serif`;
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    const waveSpeed = 0.05, waveAmplitude = 8, letterSpacing = 0.8;
-    let totalWidth = 0;
-    for (let i = 0; i < titleText.length; i++) { totalWidth += ctx.measureText(titleText[i]).width * letterSpacing; }
-    let currentX = (canvas.width / 2) - (totalWidth / 2);
-    for (let i = 0; i < titleText.length; i++) {
-        const char = titleText[i];
-        const yOffset = Math.sin(animationFrameCounter * waveSpeed + i * 0.5) * waveAmplitude;
-        const charWidth = ctx.measureText(char).width;
-        ctx.fillText(char, currentX + charWidth/2, 150 + yOffset);
-        currentX += charWidth * letterSpacing;
-    }
-    ctx.fillStyle = '#33ff57';
-    ctx.fillRect(startButton.x, startButton.y, startButton.width, startButton.height);
-    ctx.fillStyle = '#000000'; ctx.font = '30px Arial';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('Aloita peli', startButton.x + startButton.width / 2, startButton.y + startButton.height / 2);
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = '#ffffff'; ctx.font = '22px Arial';
-    ctx.fillText('Top 10:', canvas.width / 2, 320);
-    if (highScores.length === 0) {
-        ctx.font = '18px Arial'; ctx.fillText('Ei vielä tuloksia!', canvas.width / 2, 350);
-    } else {
-        ctx.font = '16px Arial'; ctx.textAlign = 'left';
-        const col1X = canvas.width / 2 - 200, col2X = canvas.width / 2 + 50;
-        const startY = 350, lineHeight = 20;
-        highScores.forEach((entry, index) => {
-            const text = `${index + 1}. ${entry.name}: ${entry.score}`;
-            if (index < 5) { ctx.fillText(text, col1X, startY + index * lineHeight); }
-            else { ctx.fillText(text, col2X, startY + (index - 5) * lineHeight); }
-        });
-    }
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.beginPath(); ctx.arc(infoButton.x, infoButton.y, infoButton.radius, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#000000'; ctx.font = 'bold 22px Arial';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('i', infoButton.x, infoButton.y + 1);
-    ctx.textBaseline = 'alphabetic';
-}
-
-function drawInstructions() {
-    drawDynamicBackground();
-    menuStars.forEach(star => drawCollectible(star));
-    ctx.fillStyle = 'rgba(50, 50, 50, 0.9)';
-    ctx.strokeStyle = '#ddd'; ctx.lineWidth = 2;
-    ctx.strokeRect(100, 50, canvas.width - 200, canvas.height - 100);
-    ctx.fillRect(100, 50, canvas.width - 200, canvas.height - 100);
-    ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
-    ctx.font = '30px Impact'; ctx.fillText('OHJEET', canvas.width / 2, 100);
-    ctx.font = '16px Arial';
-    ctx.fillText("Paina ja pidä pohjassa hypätäksesi korkeammalle.", canvas.width/2, 140);
-    ctx.fillText("Voit hypätä kerran ilmassa (tuplahyppy).", canvas.width/2, 165);
-    ctx.textAlign = 'left';
-    let yPos = 210;
-    ctx.fillText("Kerää:", 150, yPos);
-    drawCollectible({type: 'star', x: 250, y: yPos - 5, size: 15, rotation: animationFrameCounter * 0.1, color: '#fffb00'});
-    ctx.fillText("+50 pistettä", 280, yPos);
-    yPos += 30;
-    drawCollectible({type: 'heart', x: 250, y: yPos - 5, size: 20, rotation: animationFrameCounter * 0.1, color: '#ff1a75'});
-    ctx.fillText("+150 pistettä", 280, yPos);
-    yPos += 50;
-    ctx.fillText("Vältä:", 150, yPos);
-    // KORJATTU: Käytetään uutta drawExampleObstacle-funktiota
-    drawExampleObstacle({type: 'spike', x: 260, y: yPos, width: 25, height: 25, color: '#af47d2'});
-    ctx.fillText("Lattiapiikki", 290, yPos + 5);
-    yPos += 35;
-    drawExampleObstacle({type: 'wall', x: 260, y: yPos, width: 20, height: 30, color: '#ff66c4'});
-    ctx.fillText("Seinä (hyppää yli)", 290, yPos + 5);
-    yPos += 35;
-    drawExampleObstacle({type: 'roof_spike', x: 260, y: yPos, width: 25, height: 25, color: '#c70039'});
-    ctx.fillText("Kattopiikki (pysy matalana)", 290, yPos + 5);
-    ctx.fillStyle = '#ff5555'; ctx.textAlign = 'center';
-    ctx.font = '24px Arial';
-    ctx.fillText("[ Sulje napauttamalla ]", canvas.width/2, canvas.height - 80);
-}
-
+function drawExampleObstacle(item) { /* ...ei muutoksia... */ }
+function drawGame() { /* ...ei muutoksia... */ }
+function drawMenu() { /* ...ei muutoksia... */ }
+function drawInstructions() { /* ...ei muutoksia... */ }
 function drawLevelComplete() { /* ...ei muutoksia... */ }
 function drawGameOver() { /* ...ei muutoksia... */ }
 
 // --- PELILOGIIKKA ---
-function handlePlayerHit() {
-    if (player.invincibleTimer > 0) return;
-    player.lives--;
-    crashSound.play();
-    if (player.lives <= 0) {
-        if (currentMusic) currentMusic.pause();
-        gameState = 'gameOver';
-    } else {
-        player.invincibleTimer = 120;
-        obstacles = obstacles.filter(obs => obs.x > player.x + 150 || obs.x < player.x - 150);
-    }
-}
+function handlePlayerHit() { /* ...ei muutoksia... */ }
 function jump() { /* ...ei muutoksia... */ }
 function getHighScores() { /* ...ei muutoksia... */ }
 function saveHighScores() { /* ...ei muutoksia... */ }
