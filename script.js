@@ -1,4 +1,4 @@
-// Oona's Dash v1.14
+// Oona's Dash v1.15
 
 // Haetaan canvas-elementti HTML:stä
 const canvas = document.getElementById('gameCanvas');
@@ -201,7 +201,10 @@ function drawGame() {
 function drawMenu() {
     drawDynamicBackground();
     menuStars.forEach(star => drawCollectible(star));
+    
+    // KORJATTU: Varmistetaan, että nimi on oikein.
     const titleText = "Oona's Dash";
+    
     ctx.font = `70px "Impact", sans-serif`;
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
